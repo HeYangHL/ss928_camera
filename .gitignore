@@ -2,21 +2,5 @@
 build/
 out/
 *.o
-*.a
-*.so
-*.ko
-
-# 可执行文件
-*.bin
-*.elf
-
-# IDE
-.vscode/
-.idea/
-*.swp
-
-# 系统文件
-.DS_Store
-
 # 日志
 *.log
