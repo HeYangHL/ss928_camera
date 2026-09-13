@@ -1,0 +1,2 @@
+追踪算法Hungarian.cpp 和 KalmanTracker.cpp都是使用的开源项目"C++ 视频编辑库"中的算法部分的源码，开源地址：https://github.com/OpenShot/libopenshot
+其中KalmanTracker.cpp添加了适合自己项目的代码
