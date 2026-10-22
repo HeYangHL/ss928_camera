@@ -1,5 +1,7 @@
 #include "sd3403_manage.hpp"
 
+#define RTSP_LISTEN_PORT 8554
+
 int SD3403_Manage::g_sig_flag = 0;
 sem_t SD3403_Manage::mutex;
 
@@ -12,7 +14,7 @@ SD3403_Manage::~SD3403_Manage()
 
 int SD3403_Manage::Run_Fifo_Thread(void)
 {
-    for(int i = 0; i < grp_num; i++)
+    for(hi_u32 i = 0; i < grp_num; i++)
     {
         Venc_Thread = new std::thread(&SD3403_Manage::sensor_venc_stream, this, venc_chn[i]);
     }
@@ -106,31 +108,23 @@ hi_void SD3403_Manage::start_rtsp(hi_void)
     rtsp_s.add_media_source("sensor0_media", sensor0_rv, this, NULL, NULL, 30, 4800, "h265", "aac");
     rtsp_s.add_media_source("sensor1_media", sensor1_rv, this, NULL, NULL, 30, 4800, "h265", "aac");
 #else
-    live555_rtsp = new std::thread(&SD3403_Manage::create_live555_rtsp, this);
+    Live555_RTSPInit();
     manager_rtsp_stream_init();
 #endif
 }
 
 void SD3403_Manage::get_points_coll(hi_video_frame_info *frame_info, std::vector<CenterPoint> &center)
 {
-    int ret = 0;
     std::vector<objinfo> output;
 
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    char name[1024] = {0};
-    long seconds = ts.tv_sec;           // 秒
-    long nanoseconds = ts.tv_nsec;       // 纳秒
-    long microseconds = nanoseconds / 1000;  // 转换为微秒
-
     printf("get vpss channel 1 yuv, w : %d, h : %d\n", frame_info->video_frame.width, frame_info->video_frame.height);
-    ret = svp.sd3403_rfcn_svp_npu_model_inference((const unsigned char *)frame_info->video_frame.virt_addr[0], output);
+    svp.sd3403_rfcn_svp_npu_model_inference((const unsigned char *)frame_info->video_frame.virt_addr[0], output);
     // sprintf(name, "%ld_%ld.yuv", seconds, microseconds);
     // int fd = open(name, O_CREAT | O_WRONLY);
     // write(fd, frame_info->video_frame.virt_addr[0], 640*640*1.5);
     // close(fd);
-    printf("output num : %d\n", output.size());
-    for (int i = 0; i < output.size(); i++)
+    printf("output num : %zu\n", output.size());
+    for (size_t i = 0; i < output.size(); i++)
     {
         cv::Point p1, p2;
         float w = float(WIDTH_3840) / 640;
@@ -166,7 +160,7 @@ std::vector<RetureInfo> SD3403_Manage::get_track_id(void *handle, std::vector<Ce
     int id = 0;
     int type = 0;
 
-    for (int i = 0; i < center.size(); i++)
+    for (size_t i = 0; i < center.size(); i++)
     {
         carsPoint.push_back(id++);
         carsPoint.push_back(center[i].x - center[i].w / 2);
@@ -177,7 +171,7 @@ std::vector<RetureInfo> SD3403_Manage::get_track_id(void *handle, std::vector<Ce
     }
 
     std::vector<RetureInfo> returninfos = GetTrackInfos(handle, carsPoint);
-    printf("--->3 returninfos size : %d\n", returninfos.size());
+    printf("--->3 returninfos size : %zu\n", returninfos.size());
     return returninfos;
 }
 
@@ -201,7 +195,7 @@ void SD3403_Manage::send_yuv_to_model_pthread(void)
     {
         std::vector<CenterPoint> center;
         std::vector<RetureInfo> returninfos;
-        ss_print("======>%d, %d\n", sizeof(center), sizeof(returninfos));
+        ss_print("======>%zu, %zu\n", sizeof(center), sizeof(returninfos));
         ret = sd3403_vpss.get_model_yuv(vpss_grp[0], vpss_frame);
         if(ret < 0)
         {
@@ -210,9 +204,9 @@ void SD3403_Manage::send_yuv_to_model_pthread(void)
         }
         sd3403_sys.sys_mmap_cached(vpss_frame);
         get_points_coll(&vpss_frame, center);
-        ss_print("--->center size : %d\n", center.size());
+        ss_print("--->center size : %zu\n", center.size());
         returninfos = get_track_id(handle, center);
-        ss_print("--->returninfos size : %d\n", returninfos.size());
+        ss_print("--->returninfos size : %zu\n", returninfos.size());
         sd3403_rgn.show_rgn(returninfos);
         sd3403_vpss.release_model_vpss_chn(vpss_grp[0], vpss_frame);
         usleep(500000);
@@ -294,6 +288,7 @@ hi_s32 SD3403_Manage::enable_sys(hi_void)
         ss_print("sys init failed !\n");
         return HI_FAILURE;
     }
+    return HI_SUCCESS;
 }
 
 hi_s32 SD3403_Manage::enable_vi_vpss(hi_void)
@@ -405,7 +400,7 @@ hi_s32 SD3403_Manage::enable_venc(hi_void)
 {
     hi_size in_size;
     const hi_vpss_chn vpss_chn = 0;
-    int i = 0;
+    hi_u32 i = 0;
 
     hi_vpss_grp *vpss_grp = sd3403_vpss.get_vpss_grp();
 
@@ -447,6 +442,7 @@ hi_s32 SD3403_Manage::disable_venc(hi_void)
     }
 
     sd3403_venc.stop_venc(venc_chn, grp_num);
+    return HI_SUCCESS;
 }
 
 hi_s32 SD3403_Manage::disable_vpss(hi_void)
@@ -458,17 +454,20 @@ hi_s32 SD3403_Manage::disable_vpss(hi_void)
     {
         sd3403_sys.vi_un_bind_vpss(i, 0, vpss_grp[i], 0);
     }
+    return HI_SUCCESS;
 }
 hi_s32 SD3403_Manage::disable_vi(hi_void)
 {
     sd3403_vi_cfg *vi_cfg = sd3403_vi.get_vi_cfg();
     sd3403_vi.stop_vi(&vi_cfg[0]);
     sd3403_vi.stop_vi(&vi_cfg[1]);
+    return HI_SUCCESS;
 }
 
 hi_s32 SD3403_Manage::disable_sys(hi_void)
 {
     sd3403_sys.sys_exit();
+    return HI_SUCCESS;
 }
 
 hi_s32 SD3403_Manage::get_char(hi_void)
@@ -482,6 +481,7 @@ hi_s32 SD3403_Manage::get_char(hi_void)
         return -1;
     }
     ss_pause();
+    return HI_SUCCESS;
 }
 
 hi_void SD3403_Manage::sd3403_signal_handle(hi_void (*sig_handle)(hi_s32))
@@ -557,25 +557,24 @@ hi_void get_venc_strream(hi_void)
 hi_void SD3403_Manage::stop_all_thread(void)
 {
     //release signal thread
-    if(!g_sig_flag)
+    if(signal_run && !g_sig_flag)
         destroy_signal_thread();
-    printf("11\n");
+
     // if(Sig_Thread->joinable())
     //     Sig_Thread->join();
 
     //release model thread
     model_run = false;
-    if(Yuvto_Model->joinable())
+    if(Yuvto_Model != nullptr && Yuvto_Model->joinable())
         Yuvto_Model->join();
 
     //release venc thread
     _enc_run = false;
-    if(Venc_Thread->joinable())
+    if(Venc_Thread != nullptr && Venc_Thread->joinable())
         Venc_Thread->join();
 #ifdef RTSP_LIVE555_ON
     rtsp.Stop();
-    if(live555_rtsp->joinable())
-        live555_rtsp->join();
+    rtsp.ThreadJoin();
 #endif
     return;
 }
@@ -590,10 +589,42 @@ hi_void SD3403_Manage::clean_rtsp(void)
     return;
 }
 
-void SD3403_Manage::create_live555_rtsp(void)
+int SD3403_Manage::Live555_RTSPInit(void)
 {
-    rtsp.Init();
-    return;
+    unsigned int rtspServerPortNum = RTSP_LISTEN_PORT;
+
+    if (rtsp.SetRTSPServerPort(rtspServerPortNum) != 0) {
+        printf("SetRTSPServerPort fail ...\n");
+        return -1;
+    }
+
+    char *urlPrefix = rtsp.rtspURLPrefix();
+    if (urlPrefix != NULL) {
+        printf("=================URL===================\n");
+        printf("%s%s\n", urlPrefix, "sensor0_media");
+        printf("=================URL===================\n");
+    }
+
+    ServerMediaSession *mediaSession = NULL;
+    if (rtsp.createServerMediaSession(mediaSession, "sensor0_media", NULL, NULL) != 0 || mediaSession == NULL) {
+        printf("createServerMediaSession fail ...\n");
+        return -1;
+    }
+
+    ServerMediaSubsession *subSession =
+        H265LiveVideoServerMediaSubssion::createNew(*(rtsp.GetUsageEnvironmentObj()), true);
+    if (subSession == NULL || rtsp.addSubsession(mediaSession, subSession) != 0) {
+        printf("addSubsession fail ...\n");
+        return -1;
+    }
+    rtsp.addServerMediaSession(mediaSession);
+
+    if (rtsp.Start() != 0) {
+        printf("rtsp Start fail ...\n");
+        return -1;
+    }
+
+    return 0;
 }
 
 

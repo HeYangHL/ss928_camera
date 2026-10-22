@@ -6,7 +6,7 @@
 class H264LiveVideoServerMediaSubssion : public OnDemandServerMediaSubsession {
 
 public:
-	static H264LiveVideoServerMediaSubssion* createNew(UsageEnvironment& env, Boolean reuseFirstSource);
+	static H264LiveVideoServerMediaSubssion* createNew(UsageEnvironment& env, Boolean reuseFirstSource=false);
 
 protected: // we're a virtual base class
 	H264LiveVideoServerMediaSubssion(UsageEnvironment& env, Boolean reuseFirstSource);
@@ -18,9 +18,9 @@ protected: // redefined virtual functions
 public:
 	char fFileName[100];
 
-	int *Server_datasize;//Êý¾ÝÇø´óÐ¡Ö¸Õë
-	unsigned char*  Server_databuf;//Êý¾ÝÇøÖ¸Õë
-	bool *Server_dosent;//·¢ËÍ±êÊ¾
+	int *Server_datasize;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¡Ö¸ï¿½ï¿½
+	unsigned char*  Server_databuf;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½
+	bool *Server_dosent;//ï¿½ï¿½ï¿½Í±ï¿½Ê¾
 };
 
 

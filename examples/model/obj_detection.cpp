@@ -28,7 +28,7 @@ void Obj_Detec::draw(cv::Mat image, std::vector<objinfo> output)
     float w = float(image.cols) / 640;
     float h = float(image.rows) / 640;
 
-    for (int i = 0; i < output.size(); i++)
+    for (size_t i = 0; i < output.size(); i++)
     {
         cv::Point p1, p2;
         p1.x = output[i].x1 * w;
@@ -94,7 +94,7 @@ int main(void)
         std::string rpn_file = "./model/yolov5_rpn.txt";
         ret = svp.sd3403_rfcn_svp_npu_model_detcection(data, rpn_file, output);
 #endif
-        printf("output num : %d\n", output.size());
+        printf("output num : %zu\n", output.size());
         obj.draw(img, output);
         sleep(1);
     // printf("6666666666666666666666666666\n");
@@ -107,5 +107,6 @@ int main(void)
     svp.sd3403_rfcn_destroy_resource();
 #endif
 
+    (void)ret;
     return 0;
 }

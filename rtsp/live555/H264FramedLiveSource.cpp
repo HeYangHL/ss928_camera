@@ -1,72 +1,76 @@
+// 仿照参考项目 WW_ByteStreamFileSource.cpp 实现
+#include <sys/time.h>
+
 #include "H264FramedLiveSource.hh"
-#include "Fifo_Buffer.hpp"
 
-
-H264FramedLiveSource::H264FramedLiveSource(UsageEnvironment& env): FramedSource(env)
-{
-	// g_rtsp_get_frame.Init_Socket();
-}
+////////// H264FramedLiveSource //////////
+#define MAX_VIDEO_FRAME_SIZE 1000000
 
 H264FramedLiveSource* H264FramedLiveSource::createNew(UsageEnvironment& env)
 {
-	H264FramedLiveSource* newSource = new H264FramedLiveSource(env);
-	return newSource;
+    return new H264FramedLiveSource(env);
+}
+
+H264FramedLiveSource::H264FramedLiveSource(UsageEnvironment& env) : FramedSource(env)
+{
 }
 
 H264FramedLiveSource::~H264FramedLiveSource()
 {
 }
 
-// void H264FramedLiveSource::doGetNextFrame()
-// {
-	
-// 	uint8_t *frame = new uint8_t[1024*1024];
-// 	int size = 0;
-// 	int ret = 0;
-// 	ret = g_rtsp_get_frame.Get_Video_Frame(&frame, size);
-// 	printf("live555 get video frame\n");
-// 	if(ret != -1)
-// 	{
-// 		fFrameSize = size;
-// 		memcpy(fTo, frame, fFrameSize);
-// 	}
-// 	else {
-// 		handleClosure();
-// 	}
-	
-// 	gettimeofday(&fPresentationTime, NULL);
-//     afterGetting(this);
-	
-// 	return;
-// }
+unsigned int H264FramedLiveSource::maxFrameSize() const
+{
+    return MAX_VIDEO_FRAME_SIZE;
+}
+
 void H264FramedLiveSource::doGetNextFrame()
 {
-    uint8_t *frame = nullptr;
+    doReadFromFile();
+}
+
+void H264FramedLiveSource::doStopGettingFrames()
+{
+    envir().taskScheduler().unscheduleDelayedTask(nextTask());
+}
+
+void H264FramedLiveSource::doGetNextFrameStatic(FramedSource* source)
+{
+    source->doGetNextFrame();
+}
+
+void H264FramedLiveSource::doReadFromFile()
+{
+    struct timeval oldPresentationTime = fPresentationTime;
+    fFrameSize = 0;
+
+    uint8_t* frame = NULL;
     int size = 0;
-    int ret = 0;
-    
-    ret = g_rtsp_get_frame.Get_Video_Frame(&frame, size);
-    
-    if(ret != -1 && frame != nullptr && size > 0)
-    {
-        if (size > fMaxSize) {
-            fFrameSize = fMaxSize;
-            printf("[WARNING] Frame truncated! size:%d, max:%d\n", size, fMaxSize);
-        } else {
-            fFrameSize = size;
+    int iFrameSize = g_rtsp_get_frame.Get_Video_Frame(&frame, size);
+
+    if (iFrameSize < 0) {
+        handleClosure();
+        return;
+    } else if (size == 0) {
+        if (frame != NULL) {
+            g_rtsp_get_frame.Release_Video_Frame(frame);
         }
-        
-        memcpy(fTo, frame, fFrameSize);
-		g_rtsp_get_frame.Release_Video_Frame(frame);
+        // 暂无数据：1ms 后重试（与参考项目一致，不能交付 0 字节）
+        nextTask() = envir().taskScheduler().scheduleDelayedTask(1000,
+            (TaskFunc*)doGetNextFrameStatic, this);
+        return;
     }
-    else {
-		if(frame)
-			g_rtsp_get_frame.Release_Video_Frame(frame);
-        fFrameSize = 0; 
+
+    // 整个编码包一次交付，从不截断（BANK_SIZE 1.5MB 装得下 VENC 整包）
+    memcpy(fTo, frame, size);
+    fFrameSize = (unsigned int)size;
+    g_rtsp_get_frame.Release_Video_Frame(frame);
+
+    if (((fPresentationTime.tv_sec == 0) && (fPresentationTime.tv_usec == 0))
+        || ((oldPresentationTime.tv_sec == fPresentationTime.tv_sec)
+            && (oldPresentationTime.tv_usec == fPresentationTime.tv_usec))) {
+        gettimeofday(&fPresentationTime, NULL);
     }
-    
-    gettimeofday(&fPresentationTime, NULL);
-    afterGetting(this);
-    
-    return;
+
+    FramedSource::afterGetting(this);
 }

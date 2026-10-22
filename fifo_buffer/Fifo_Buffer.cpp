@@ -254,6 +254,8 @@ int List::clean_enc_fifo(void)
     }
 #endif
     pthVar.Unlock_Mutex(enc_mutex);
+
+    return 0;
 }
 
 // int List::write_queue(int8_t *buf, int len, uint64_t pts, bool key, int ms)

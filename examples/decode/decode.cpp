@@ -141,7 +141,7 @@ hi_s32 SD3403_VDEC_Decoder::vdec_config_vb_pool(hi_bool *pic_buf_alloc, hi_bool 
     for (j = 0; j < HI_VB_MAX_COMMON_POOLS; j++)
     {
         find_flag = HI_FALSE;
-        for (i = 0; (i < chn_num) && (i < HI_VDEC_MAX_CHN_NUM); i++)
+        for (i = 0; (i < (hi_u32)chn_num) && (i < HI_VDEC_MAX_CHN_NUM); i++)
         {
             if ((find_flag == HI_FALSE) && (pic_buf_size != 0) && (*pic_buf_alloc == HI_FALSE))
             {
@@ -165,7 +165,7 @@ hi_s32 SD3403_VDEC_Decoder::vdec_config_vb_pool(hi_bool *pic_buf_alloc, hi_bool 
     for (j = pos + 1; j < HI_VB_MAX_COMMON_POOLS; j++)
     {
         find_flag = HI_FALSE;
-        for (i = 0; (i < chn_num) && (i < HI_VDEC_MAX_CHN_NUM); i++)
+        for (i = 0; (i < (hi_u32)chn_num) && (i < HI_VDEC_MAX_CHN_NUM); i++)
         {
             if ((find_flag == HI_FALSE) && (tmv_buf_size != 0) && (*tmv_buf_alloc == HI_FALSE))
             {
@@ -248,6 +248,7 @@ hi_s32 SD3403_VDEC_Decoder::init_module_vdec_vb(void)
             return HI_FAILURE;
         }
     }
+    return HI_SUCCESS;
 }
 
 hi_s32 SD3403_VDEC_Decoder::InitSysAndVb(hi_u32 width, hi_u32 height)
@@ -535,7 +536,6 @@ void SD3403_VDEC_Decoder::send_stream(FILE *inputFp)
     hi_u8 *streamBuf = nullptr;
 
     hi_u32 frameCount = 0;
-    hi_bool endOfStream = HI_FALSE;
     hi_s32 usedBytes = 0;
     hi_s32 readLen;
     hi_vdec_stream stream;
@@ -682,13 +682,13 @@ void SD3403_VDEC_Decoder::recv_stream(FILE *outputFp)
             // 写入 Y 分量（按实际宽度）
             for (td_u32 i = 0; i < height; i++)
             {
-                fwrite(vf->virt_addr[0] + i * stride_y, 1, width, outputFp);
+                fwrite((hi_u8 *)vf->virt_addr[0] + i * stride_y, 1, width, outputFp);
             }
 
             // 写入 UV 分量（按实际宽度，高度为 height/2）
             for (td_u32 i = 0; i < height / 2; i++)
             {
-                fwrite(vf->virt_addr[1] + i * stride_uv, 1, width, outputFp);
+                fwrite((hi_u8 *)vf->virt_addr[1] + i * stride_uv, 1, width, outputFp);
             }
             // fclose(outputFp);
 
@@ -716,7 +716,6 @@ void SD3403_VDEC_Decoder::recv_stream(FILE *outputFp)
 
 hi_s32 SD3403_VDEC_Decoder::DecodeFile(const char *inputFile, const char *outputFile, hi_u32 maxFrames)
 {
-    hi_s32 ret;
     FILE *inputFp = nullptr;
     FILE *outputFp = nullptr;
 

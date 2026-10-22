@@ -9,12 +9,12 @@ int main(int argc, const char **argv)
     ret = manage.enable_sys();
     if (ret != HI_SUCCESS) {
         std::cout << "enable sys error !" <<std::endl;
-        goto sys_init_failed;
+        goto start_venc_failed;
     }
     ret = manage.enable_vi_vpss();
     if (ret != HI_SUCCESS) {
         std::cout << "enable vi and vpss error !" <<std::endl;
-        goto start_vi_vpss_failed;
+        goto start_venc_failed;
     }
     ret = manage.enable_venc();
     if (ret != HI_SUCCESS) {
@@ -27,17 +27,15 @@ int main(int argc, const char **argv)
     manage.register_signal();
 
     manage.get_char();
-    printf("===========================================1=====================================\n");
+    // printf("===========================================1=====================================\n");
 start_venc_failed:
+    manage.stop_all_thread();
     manage.disable_venc();
-start_vi_vpss_failed:
     manage.disable_rgn();
     manage.disable_vpss();
     manage.disable_vi();
-sys_init_failed:
     manage.disable_sys();
     manage.clean_rtsp();
-    manage.stop_all_thread();
     return 0;
 }
 

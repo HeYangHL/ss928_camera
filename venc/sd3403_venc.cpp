@@ -132,7 +132,7 @@ int SD3403_VENC::getSensor_Frame(char *data, uint64_t *pts, int ms, bool &key, i
                 ss_print("HI_MPI_VENC_GetStream failed with %#x!\n", s32Ret);
                 return -1;
             }
-            hi_s32 i = 0;
+            hi_u32 i = 0;
             char *p = data;
 
             for (i = 0; i < stStream.pack_cnt; i++)

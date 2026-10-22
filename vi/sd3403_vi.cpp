@@ -299,8 +299,7 @@ hi_void SD3403_VI::deregister_sensor_lib(hi_vi_pipe vi_pipe)
 
 hi_s32 SD3403_VI::isp_run(hi_isp_dev isp_dev)
 {
-    hi_s32 ret;
-    pthread_attr_t *thread_attr = NULL;
+    hi_s32 ret = 0;
 
     // ret = pthread_create(&g_isp_pid[isp_dev], thread_attr, sample_comm_isp_thread, (hi_void*)(hi_ulong)isp_dev);
     // if (ret != 0) {

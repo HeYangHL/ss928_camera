@@ -24,9 +24,6 @@ public:
         a_Rtcp_cNum = 0;
         ssrc = 0;
         pthread_flag = 0;
-        void *video_opaque = nullptr;
-        void *audio_opaque = nullptr;
-        bool _run = false;
         media = nullptr;
 
     }

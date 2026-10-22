@@ -61,13 +61,13 @@ StateType KalmanTracker::predict()
 
 	StateType predictBox = get_rect_xysr(p.at<float>(0, 0), p.at<float>(1, 0), p.at<float>(2, 0), p.at<float>(3, 0));
 
-	//Ô¤²â½á¹ûÀúÊ·¼ÇÂ¼
+	//Ô¤ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê·ï¿½ï¿½Â¼
 	m_history.push_back(predictBox);
 	return m_history.back();
 }
 
 
-// Update the state vector with observed bounding box. flag false Ö»ÊÇÎªÁËÐÞÕý´°¿Ú´óÐ¡
+// Update the state vector with observed bounding box. flag false Ö»ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú´ï¿½Ð¡
 void KalmanTracker::update(StateType stateMat, int detectID, bool flag)
 {
 	if (flag)
@@ -76,9 +76,9 @@ void KalmanTracker::update(StateType stateMat, int detectID, bool flag)
 		m_history.clear();
 		m_hits += 1;
 		m_hit_streak += 1;
-		//³µÁ¾¼ì²â½á¹ûÀúÊ·¼ÇÂ¼,×î¶à¼ÇÂ¼ real_history_length¸ö ==¡· 3¸ö
+		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê·ï¿½ï¿½Â¼,ï¿½ï¿½ï¿½ï¿½Â¼ real_history_lengthï¿½ï¿½ ==ï¿½ï¿½ 3ï¿½ï¿½
 		m_real_history.push_back(stateMat);
-		if (m_real_history.size() > real_history_length)
+		if ((int)m_real_history.size() > real_history_length)
 			m_real_history.pop_front();
 	}
 	

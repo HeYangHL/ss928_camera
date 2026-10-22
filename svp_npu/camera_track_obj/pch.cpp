@@ -69,7 +69,6 @@ vector<RetureInfo> GetTrackInfos(void *p, vector<float> carsPoint)
 
 	CarTracking *p_car = (CarTracking *)(p);
 	vector<TrackingBox> carsRect, carsRectFilter;
-	int image_width, image_height;
 
 	for (size_t j = 0; j < carsPoint.size(); j = j + 6)
 	{
@@ -88,7 +87,7 @@ vector<RetureInfo> GetTrackInfos(void *p, vector<float> carsPoint)
 	// 过滤大框包围小框的情况 首先按照框的大小排序，然后和所有的比较 在框内的被抑制
 	sort(carsRect.begin(), carsRect.end(), boxCompare);
 	// printf("---> carsRect size : %d\n", carsRect.size());
-	for (int i = 0; i < carsRect.size(); i++)
+	for (size_t i = 0; i < carsRect.size(); i++)
 	{
 		bool flag = true;
 		/*Rect_<float> box1 = carsRect[i].box;
@@ -111,7 +110,7 @@ vector<RetureInfo> GetTrackInfos(void *p, vector<float> carsPoint)
 	// printf("--->cars_track size : %d\n", cars_track.size());
 	vector<RetureInfo> returnInfos;
 	// printf("--->1 returnInfos size : %d\n", returnInfos.size());
-	for (int i = 0; i < cars_track.size(); i++)
+	for (size_t i = 0; i < cars_track.size(); i++)
 	{
 		TrackingBox car = cars_track[i];
 
@@ -286,7 +285,6 @@ bool TrakingCarsID(vector<TrackingBox> carsList, vector<TrackingBox> &cars, CarT
 	for (auto umd : unmatchedDetections)
 	{
 		// 限制坐标范围
-		Rect_<float> ubox = carsList[umd].box;
 		{
 			printf("为新的目标创建追踪器\n");
 			KalmanTracker tracker = KalmanTracker(carsList[umd].box, carsList[umd].detectID, carsList[umd].type);
@@ -297,7 +295,7 @@ bool TrakingCarsID(vector<TrackingBox> carsList, vector<TrackingBox> &cars, CarT
 	}
 
 	cout << "unmatchedDetections size is " << unmatchedDetections.size() << endl;
-	printf("===>trackers size : %d\n", trackers.size());
+	printf("===>trackers size : %zu\n", trackers.size());
 	for (auto it = trackers.begin(); it != trackers.end();)
 	{
 		printf("===>m_time_since_update : %d, param.max_lost_age : %d\n", (*it).m_time_since_update, param.max_lost_age);

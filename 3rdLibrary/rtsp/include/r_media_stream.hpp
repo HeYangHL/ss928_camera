@@ -28,15 +28,15 @@ public:
                     uint32_t audioSampleRate, \
                     std::string videoCodecType="h264", \
                     std::string audioCodecType="aac") \
-                    :source_name(sourceName), \
-                    read_video_callback(read_video_stream), \
-                    stream_video_opaque(video_opaque), \
-                    read_audio_callback(read_audio_stream), \
-                    stream_audio_opaque(audio_opaque), \
+                    :video_format(videoCodecType), \
+                    audio_format(audioCodecType), \
                     video_fps(videoFrameRate), \
                     audio_sample(audioSampleRate), \
-                    video_format(videoCodecType), \
-                    audio_format(audioCodecType)
+                    read_video_callback(read_video_stream), \
+                    read_audio_callback(read_audio_stream), \
+                    stream_video_opaque(video_opaque), \
+                    stream_audio_opaque(audio_opaque), \
+                    source_name(sourceName)
 
     {};
     ~MEDIA_STREAM(){};

@@ -14,7 +14,8 @@
 #include <semaphore.h>
 #ifdef RTSP_LIVE555_ON
 #include "GetFrame.hpp"
-#include "Rtsp_Server.hpp"
+#include "Live555RTSPServer.hpp"
+#include "H265LiveVideoServerMediaSubssion.hh"
 #endif
 
 class SD3403_Manage{
@@ -39,6 +40,7 @@ public:
     hi_void sensor_venc_stream(int chn);
     hi_void start_rtsp(hi_void);
     int Run_Fifo_Thread(void);
+    int Live555_RTSPInit(void);
 #ifndef RTSP_LIVE555_ON
     List &get_sensor0_fifo(void){return Sensor0_Fifo;}
     List &get_sensor1_fifo(void){return Sensor1_Fifo;}
@@ -55,7 +57,6 @@ public:
     hi_void clean_rtsp(void);
     hi_void destroy_signal_thread(void);
     hi_s32 enable_rtsp(hi_void);
-    void create_live555_rtsp(void);
 
 
 private:
@@ -77,12 +78,11 @@ private:
     std::thread *Venc_Thread = nullptr;
     std::thread *Yuvto_Model = nullptr;
     std::thread *Sig_Thread = nullptr;
-    std::thread *live555_rtsp = nullptr;
     static int g_sig_flag;
     SVP_NNN svp;
     static sem_t mutex;
 #ifdef RTSP_LIVE555_ON
-    RtspServer rtsp;
+    Live555RTSPServer rtsp;
 #else
     RTSP_S rtsp_s;
 #endif

@@ -210,10 +210,9 @@ hi_s32 SD3403_RGN::clean_all_rgn(void)
 
 hi_s32 SD3403_RGN::show_rgn(std::vector<RetureInfo> rgninfo)
 {
-    hi_s32 ret = 0;
     //收集当前帧的所有 ID
 
-    ss_print("===========================show rgn=========================info : %d\n", rgninfo.size());
+    // ss_print("===========================show rgn=========================info : %d\n", rgninfo.size());
     std::unordered_set<int> currentIDs;
     for (const auto& info : rgninfo) {
         currentIDs.insert(info.detectID);
@@ -222,7 +221,7 @@ hi_s32 SD3403_RGN::show_rgn(std::vector<RetureInfo> rgninfo)
         auto it = _carInfo.find(info.detectID);
         if (it != _carInfo.end()) {
             // 更新已有 RGN（例如移动位置）
-            ret = update_rgn(it->second.handle, info.x, info.y, info.width, info.height);
+            update_rgn(it->second.handle, info.x, info.y, info.width, info.height);
         } else {
             // 创建新 RGN
             hi_s32 handle = get_rgn_handle();
@@ -233,7 +232,7 @@ hi_s32 SD3403_RGN::show_rgn(std::vector<RetureInfo> rgninfo)
     }
     //删除消失的目标
     for (auto it = _carInfo.begin(); it != _carInfo.end(); ) {
-        ss_print("====>find delete id : %d, num : %d\n", it->first, currentIDs.size());
+        ss_print("====>find delete id : %d, num : %zu\n", it->first, currentIDs.size());
         if (currentIDs.find(it->first) == currentIDs.end()) {
             int free_handle = it->second.handle;
             destroy_rgn(it->second.handle);
@@ -251,7 +250,7 @@ hi_s32 SD3403_RGN::show_rgn(std::vector<RetureInfo> rgninfo)
 
 hi_s32 SD3403_RGN::get_rgn_handle(void)
 {
-    int i = 0;
+    size_t i = 0;
 
     for(i = 0; i < sizeof(handle_flag); i++)
     {
@@ -263,6 +262,7 @@ hi_s32 SD3403_RGN::get_rgn_handle(void)
         printf("rgn handle exceeds the specified maximum value!\n");
         return -1;
     }
+    return -1;
 }
 
 void SD3403_RGN::delete_handle(hi_s32 handle)

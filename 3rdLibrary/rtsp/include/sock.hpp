@@ -55,11 +55,11 @@ public:
     static int serverAudioRtpSockfd;
     static int serverAudioRtcpSockfd;
 
-    int set_video_rtp_port(int port){videoRtpPort = port;}
-    int set_video_rtcp_port(int port){videoRtcpPort = port;}
-    int set_audio_rtp_port(int port){audioRtpPort = port;}
-    int set_audio_rtcp_port(int port){audioRtcpPort = port;}
-    int set_client_ip(uint8_t *ip){memcpy(client_ip, ip, sizeof(client_ip));}
+    int set_video_rtp_port(int port){videoRtpPort = port; return 0;}
+    int set_video_rtcp_port(int port){videoRtcpPort = port; return 0;}
+    int set_audio_rtp_port(int port){audioRtpPort = port; return 0;}
+    int set_audio_rtcp_port(int port){audioRtcpPort = port; return 0;}
+    int set_client_ip(uint8_t *ip){memcpy(client_ip, ip, sizeof(client_ip)); return 0;}
     void sock_set_pthread_des_stat(bool val){
         set_pthrea_des_stat(val);
     }

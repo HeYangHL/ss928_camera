@@ -8,23 +8,20 @@
 class H264FramedLiveSource : public FramedSource
 {
 public:
-	static H264FramedLiveSource* createNew(UsageEnvironment& env);
+    static H264FramedLiveSource* createNew(UsageEnvironment& env);
 
 protected:
-	H264FramedLiveSource(UsageEnvironment& env);
-	~H264FramedLiveSource();
+    H264FramedLiveSource(UsageEnvironment& env);
+    virtual ~H264FramedLiveSource();
+
+    void doReadFromFile();
+    virtual unsigned int maxFrameSize() const;
 
 private:
-	virtual void doGetNextFrame();
-	int TransportData(unsigned char* to, unsigned maxSize);
-
-protected:
-	int *Framed_datasize;//��������Сָ��
-	unsigned char *Framed_databuf;//������ָ��
-	bool *Framed_dosent;//���ͱ�ʾ
-
-	int readbufsize;//��¼�Ѷ�ȡ��������С
-	int bufsizel;//��¼��������С
+    // 重定义虚函数（结构对齐参考项目 WW_ByteStreamFileSource）
+    virtual void doGetNextFrame();
+    virtual void doStopGettingFrames();
+    static void doGetNextFrameStatic(FramedSource* source);
 };
 
 #endif

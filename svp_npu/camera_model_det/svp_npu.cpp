@@ -33,6 +33,7 @@ int SVP_NNN::sd3403_svp_npu_acl_init(const td_char *config_path)
         return TD_FAILURE;
     }
     svp_trace_info("get run mode success!\n");
+    return HI_SUCCESS;
 }
 
 int SVP_NNN::sd3403_svp_npu_read_model(const td_char *model_path, hi_u32 model_index)
@@ -585,7 +586,6 @@ hi_s32 SVP_NNN::sd3403_svp_npu_create_output(svp_npu_task_info *task)
 {
     svp_acl_error ret;
     hi_u32 i;
-    svp_acl_data_buffer *output_data = HI_NULL;
 
     if (sd3403_svp_check_task_cfg(task) != HI_SUCCESS)
     {
@@ -722,7 +722,7 @@ hi_s32 SVP_NNN::svp_npu_acl_create_shared_work_buf(td_u32 shared_work_buf_idx)
         ret = svp_npu_get_work_buf_info(&g_svp_npu_task[task_idx], &work_buf_size, &work_buf_stride);
         if (ret != SVP_ACL_SUCCESS)
         {
-            svp_trace_err("task %d get work info error!\n");
+            svp_trace_err("task %d get work info error!\n", task_idx);
             return TD_FAILURE;
         }
         if (g_svp_npu_shared_work_buf[shared_work_buf_idx].work_buf_size < work_buf_size)
@@ -811,15 +811,14 @@ int SVP_NNN::sd3403_svp_npu_acl_deinit(void)
         svp_trace_err("finalize acl fail\n");
     }
     svp_trace_info("end to finalize acl\n");
+    return HI_SUCCESS;
 }
 /*INIT*/
 hi_s32 SVP_NNN::sd3403_svp_npu_get_input_data(const hi_char *src, hi_u32 num, const svp_npu_task_info *task)
 {
     hi_s32 ret;
     hi_u32 i, line, total_line_num, line_byte_num;
-    hi_char path[SD3403_PATH_MAX] = {0};
     size_t stride, size, input_num;
-    FILE *fp = HI_NULL;
     int8_t *data = HI_NULL;
     svp_acl_data_buffer *data_buffer = HI_NULL;
 
@@ -1011,7 +1010,7 @@ hi_void SVP_NNN::sd3403_svp_npu_output_classification_result(const svp_npu_task_
     svp_check_exps_return_void(task->output_dataset == HI_NULL, SVP_ERR_LEVEL_ERROR,
                                "task->output_dataset is NULL!\n");
 
-    printf("==========================> output num : %d\n", svp_acl_mdl_get_dataset_num_buffers(task->output_dataset));
+    // printf("==========================> output num : %d\n", svp_acl_mdl_get_dataset_num_buffers(task->output_dataset));
     for (i = 0; i < svp_acl_mdl_get_dataset_num_buffers(task->output_dataset); i++)
     {
         data_buffer = svp_acl_mdl_get_dataset_buffer(task->output_dataset, i);
@@ -1025,16 +1024,16 @@ hi_void SVP_NNN::sd3403_svp_npu_output_classification_result(const svp_npu_task_
         stride = svp_acl_get_data_buffer_stride(data_buffer);
         svp_check_exps_return_void(data == HI_NULL, SVP_ERR_LEVEL_ERROR,
                                    "get %u-th data stride is 0!\n", i);
-        printf("===>stride : %d\n", stride);
+        printf("===>stride : %zu\n", stride);
 
         ret = svp_acl_mdl_get_output_dims(g_svp_npu_model[task->cfg.model_idx].model_desc, i, &dims);
         svp_check_exps_return_void(data == HI_NULL, SVP_ERR_LEVEL_ERROR,
                                    "get %u-th output dims failed, error code is %d!\n", i, ret);
 
-        svp_trace_info("dims count : %d, name : %s\n", dims.dim_count, dims.name);
-        for (int k = 0; k < dims.dim_count; k++)
+        svp_trace_info("dims count : %zu, name : %s\n", dims.dim_count, dims.name);
+        for (size_t k = 0; k < dims.dim_count; k++)
         {
-            svp_trace_info("k : %d, dims.dims[i] : %d\n", k, dims.dims[k]);
+            svp_trace_info("k : %zu, dims.dims[i] : %ld\n", k, dims.dims[k]);
         }
 
         printf("===>task->cfg.dynamic_batch_num : %d\n", task->cfg.dynamic_batch_num);
@@ -1135,18 +1134,18 @@ int SVP_NNN::Det(unsigned char *frame, std::vector<sd3403_svp_npu_top_n_result> 
 
 process_end2:
     (hi_void) sd3403_svp_npu_acl_deinit_task(1, 0);
-process_end1:
     (hi_void) sd3403_svp_npu_unload_model(model_idx);
-process_end0:
     (hi_void) sd3403_svp_npu_acl_deinit();
 
     return -1;
 }
 int SVP_NNN::Uninit_AI()
 {
+    return HI_SUCCESS;
 }
 int SVP_NNN::Uninit_ACL()
 {
+    return HI_SUCCESS;
 }
 
 /*****
@@ -1160,7 +1159,6 @@ hi_s32 SVP_NNN::sd3403_rfcn_svp_npu_acl_init(void)
     /* svp acl init */
     svp_acl_rt_run_mode run_mode;
     svp_acl_error ret;
-    hi_bool is_mpi_init;
 
     ret = svp_acl_init("");
     svp_check_exps_return(ret != SVP_ACL_SUCCESS, HI_FAILURE, SVP_ERR_LEVEL_ERROR, "acl init failed!\n");
@@ -1197,7 +1195,7 @@ hi_s32 SVP_NNN::sd3403_rfcn_svp_npu_acl_init(void)
         printf("acl create stream failed");
         return HI_FAILURE;
     }
-    printf("=============================2=====stream : %p. context : %p===================\n", stream_, context_);
+    // printf("=============================2=====stream : %p. context : %p===================\n", stream_, context_);
     /* get run mode */
     ret = svp_acl_rt_get_run_mode(&run_mode);
     if ((ret != SVP_ACL_SUCCESS) || (run_mode != SVP_ACL_DEVICE))
@@ -1234,7 +1232,7 @@ hi_s32 SVP_NNN::sd3403_rfcn_svp_npu_read_model(const hi_char *model_path, hi_u32
     svp_check_exps_goto(ret == -1, end_0, SVP_ERR_LEVEL_ERROR, "fseek failed!\n");
 
     /* malloc model file mem */
-    printf("===>rfcn_svp_npu_model[model_index].model_mem_size : %d\n", rfcn_svp_npu_model[model_index].model_mem_size);
+    printf("===>rfcn_svp_npu_model[model_index].model_mem_size : %lu\n", rfcn_svp_npu_model[model_index].model_mem_size);
     if (is_cached == HI_TRUE)
     {
         ret = svp_acl_rt_malloc_cached(&rfcn_svp_npu_model[model_index].model_mem_ptr,
@@ -1308,8 +1306,6 @@ end_0:
 
 hi_s32 SVP_NNN::sd3403_rfcn_svp_npu_get_model_base_info(hi_u32 model_index)
 {
-    svp_acl_error ret;
-
     rfcn_svp_npu_model[model_index].input_num = svp_acl_mdl_get_num_inputs(rfcn_svp_npu_model[model_index].model_desc);
     svp_check_exps_return(rfcn_svp_npu_model[model_index].input_num < SVP_NPU_EXTRA_INPUT_NUM + 1,
                           HI_FAILURE, SVP_ERR_LEVEL_ERROR, "get input num failed!\n");
@@ -1362,11 +1358,10 @@ hi_s32 SVP_NNN::read_rpn_file(const std::string &fileName, std::vector<float> &d
 
 hi_s32 SVP_NNN::sd3403_rfcn_svp_npu_set_threshold(sd3403_svp_npu_threshold threshold[], hi_u32 threshold_num, const svp_npu_task_info *task)
 {
-    hi_u32 i, n;
-    svp_acl_error ret;
+    hi_u32 n;
     svp_acl_data_buffer *data_buffer = HI_NULL;
     hi_float *data = HI_NULL;
-    size_t idx, size;
+    size_t size;
 
     if (sd3403_rfcn_svp_check_task_cfg(task) != HI_SUCCESS)
     {
@@ -1483,7 +1478,7 @@ void* SVP_NNN::ReadBinFileWithStride(const std::string& fileName, const svp_acl_
         loopTimes *= dims.dims[loop];
     }
     size_t bufferSize = loopTimes * stride;
-    printf("=====>malloc bufferSize : %d, loopTimes : %d, stride : %d\n", bufferSize, loopTimes, stride);
+    printf("=====>malloc bufferSize : %zu, loopTimes : %ld, stride : %zu\n", bufferSize, loopTimes, stride);
     svp_acl_error ret = svp_acl_rt_malloc(&binFileBufferData, bufferSize, SVP_ACL_MEM_MALLOC_NORMAL_ONLY);
     if (ret != SVP_ACL_SUCCESS) {
         printf("malloc device buffer failed. size is %u\n", binFileBufferLen);
@@ -1495,7 +1490,7 @@ void* SVP_NNN::ReadBinFileWithStride(const std::string& fileName, const svp_acl_
     int64_t dimValue = dims.dims[dims.dim_count - 1];
     size_t lineSize = dimValue * dataSize;
     size_t allsize = 0;
-    printf("===>dimValue : %d, dataSize : %d\n", dimValue, dataSize);
+    printf("===>dimValue : %ld, dataSize : %zu\n", dimValue, dataSize);
     int fd = open("svp_711_VL_1012.yuv", O_CREAT | O_RDWR);
     for (int64_t loop = 0; loop < loopTimes; loop++) {
         allsize += lineSize;
@@ -1512,10 +1507,6 @@ void* SVP_NNN::ReadBinFileWithStride(const std::string& fileName, const svp_acl_
 
 hi_s32 SVP_NNN::sd3403_rfcn_svp_npu_model_execute(const svp_npu_task_info *task)
 {
-    svp_acl_data_buffer *data_buffer = HI_NULL;
-    hi_void *data = HI_NULL;
-    size_t size;
-    hi_u32 i;
     svp_acl_error ret;
 
     if (sd3403_rfcn_svp_check_task_cfg(task) != HI_SUCCESS)
@@ -1528,7 +1519,6 @@ hi_s32 SVP_NNN::sd3403_rfcn_svp_npu_model_execute(const svp_npu_task_info *task)
     svp_check_exps_return(ret != SVP_ACL_SUCCESS, HI_FAILURE, SVP_ERR_LEVEL_ERROR,
                           "svp_acl_mdl_execute failed, model_id is %u, error code is %d!\n",
                           rfcn_svp_npu_model[task->cfg.model_idx].model_id, ret);
-    size_t output_buf_num = svp_acl_mdl_get_dataset_num_buffers(task->output_dataset);
 
     // if (task->cfg.is_cached == HI_TRUE)
     // {
@@ -1672,7 +1662,7 @@ static void PrintResult(const std::vector<std::vector<float>> &boxValue)
     int validNum = 0;
     for (size_t loop = 0; loop < boxValue.size(); loop++)
     {
-        printf("====> loop : %d, class : %f\n", loop, boxValue[loop][CLASS_ID]);
+        printf("====> loop : %zu, class : %f\n", loop, boxValue[loop][CLASS_ID]);
         if (boxValue[loop][CLASS_ID] == cId)
         {
             validNum++;
@@ -1732,6 +1722,7 @@ hi_s32 SVP_NNN::sd3403_rfcn_output_result(const svp_npu_task_info *task)
 
     std::sort(bboxes.begin(), bboxes.end(), Cmp);
     PrintResult(bboxes);
+    return HI_SUCCESS;
 }
 
 void SVP_NNN::FilterYolov5v7Box(const svp_npu_task_info *task, std::vector<vector<float>> &vaildBox)
@@ -1977,7 +1968,6 @@ hi_s32 SVP_NNN::sd3403_rfcn_svp_npu_get_roi_by_index(const svp_npu_task_info *ta
     std::vector<std::vector<float>> bboxes;
     for (int inx = 0; inx < rect_info->num; inx++)
     {
-        float classId = (*(outDataValue + inx + CLASS_ID * wStrideOffset));
         // if (classId == 0.0f) {
         // continue; // skip class 0 back ground
         //}
@@ -1988,10 +1978,10 @@ hi_s32 SVP_NNN::sd3403_rfcn_svp_npu_get_roi_by_index(const svp_npu_task_info *ta
         }
         bboxes.push_back(bbox);
     }
-    printf("=====> boxs : %d\n", bboxes.size());
+    printf("=====> boxs : %zu\n", bboxes.size());
     std::sort(bboxes.begin(), bboxes.end(), sd3403_rfcn_cmp);
     sd3403_rfcn_parse_result(bboxes, rect_info);
-    // size_t buffer_size = svp_acl_mdl_get_input_size_by_index(rfcn_svp_npu_model[task->cfg.model_idx].model_desc, OUTPUT_BBOX_ID) * \
+    // size_t buffer_size = svp_acl_mdl_get_input_size_by_index(rfcn_svp_npu_model[task->cfg.model_idx].model_desc, OUTPUT_BBOX_ID) *
     //             (hi_u64)task->cfg.max_batch_num;
     // memset(outDataValue, 0, buffer_size);
 
@@ -2021,10 +2011,8 @@ hi_s32 SVP_NNN::sd3403_rfcn_svp_npu_acl_frame_handle(const unsigned char *yuv_fr
 {
     hi_s32 ret = 0;
     // need change
-    sd3403_svp_npu_detection_info detection_info = {0};
     // detection_info.num_name = "detection_filter_3_0";
     // detection_info.roi_name = "detection_filter_3_";
-    detection_info.has_background = HI_TRUE;
 
     // ret = svp_acl_rt_set_device(g_svp_npu_dev_id);
     // svp_check_exps_return(ret != HI_SUCCESS, HI_NULL, SVP_ERR_LEVEL_ERROR, "open device failed!\n");
@@ -2077,7 +2065,7 @@ svp_acl_data_buffer *SVP_NNN::sd3403_rfcn_svp_npu_create_input_data_buffer(svp_n
                           SVP_ERR_LEVEL_ERROR, "buffer_size(%lu) can't be 0 and should be less than %u!\n",
                           buffer_size, SVP_NPU_MAX_MEM_SIZE);
 
-    printf("=====> input num : %d, size : %d, stride : %d\n", idx, buffer_size, stride);
+    printf("=====> input num : %d, size : %zu, stride : %zu\n", idx, buffer_size, stride);
     if (sd3403_rfcn_svp_npu_malloc_mem(&input_buffer, (hi_u32)buffer_size, task->cfg.is_cached) != HI_SUCCESS)
     {
         svp_trace_err("%u-th input malloc mem failed!\n", idx);
@@ -2092,7 +2080,7 @@ svp_acl_data_buffer *SVP_NNN::sd3403_rfcn_svp_npu_create_input_data_buffer(svp_n
         return input_data;
     }
 
-    printf("========>idx : %d, 1 : %d, 2 : %d\n", idx, rfcn_svp_npu_model[task->cfg.model_idx].input_num - SVP_NPU_EXTRA_INPUT_NUM, rfcn_svp_npu_model[task->cfg.model_idx].input_num - 1);
+    printf("========>idx : %d, 1 : %zu, 2 : %zu\n", idx, rfcn_svp_npu_model[task->cfg.model_idx].input_num - SVP_NPU_EXTRA_INPUT_NUM, rfcn_svp_npu_model[task->cfg.model_idx].input_num - 1);
     if (idx == rfcn_svp_npu_model[task->cfg.model_idx].input_num - SVP_NPU_EXTRA_INPUT_NUM)
     {
         task->task_buf_ptr = input_buffer;
@@ -2355,7 +2343,6 @@ td_s32 SVP_NNN::sd3403_rfcn_svp_npu_acl_init_task(td_bool is_share_work_buf, td_
 {
     hi_u32 task_idx = 0;
     hi_s32 ret = 0;
-    hi_bool has_aicpu_task = HI_FALSE;
 
     if (is_share_work_buf == HI_TRUE)
     {
@@ -2457,7 +2444,7 @@ hi_void SVP_NNN::sd3403_rfcn_svp_npu_destroy_input(svp_npu_task_info *task)
     }
 
     input_num = svp_acl_mdl_get_dataset_num_buffers(task->input_dataset);
-    printf("intput num : %d\n", input_num);
+    printf("intput num : %zu\n", input_num);
     for (i = 0; i < input_num; i++)
     {
         data_buffer = svp_acl_mdl_get_dataset_buffer(task->input_dataset, i);
@@ -2478,7 +2465,6 @@ hi_s32 SVP_NNN::sd3403_rfcn_svp_npu_create_input(svp_npu_task_info *task)
     svp_acl_error ret;
     hi_u32 i;
     svp_acl_data_buffer *input_data = HI_NULL;
-    hi_void *input_buffer = HI_NULL;
 
     if (sd3403_rfcn_svp_check_task_cfg(task) != HI_SUCCESS)
     {
@@ -2515,7 +2501,6 @@ hi_s32 SVP_NNN::sd3403_rfcn_svp_npu_create_output(svp_npu_task_info *task)
 {
     svp_acl_error ret;
     hi_u32 i;
-    svp_acl_data_buffer *output_data = HI_NULL;
 
     if (sd3403_rfcn_svp_check_task_cfg(task) != HI_SUCCESS)
     {
@@ -2642,7 +2627,7 @@ process_end1:
 process_end2:
     sd3403_rfcn_svp_npu_unload_model(model_idx);
 process_end3:
-    printf("==============================yhtest================================================================\n");
+    // printf("==============================yhtest================================================================\n");
     sd3403_rfcn_svp_npu_acl_deinit();
     return HI_FALSE;
 }
