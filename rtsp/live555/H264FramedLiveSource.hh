@@ -9,6 +9,7 @@ class H264FramedLiveSource : public FramedSource
 {
 public:
     static H264FramedLiveSource* createNew(UsageEnvironment& env);
+    void requestResync();
 
 protected:
     H264FramedLiveSource(UsageEnvironment& env);
@@ -22,6 +23,8 @@ private:
     virtual void doGetNextFrame();
     virtual void doStopGettingFrames();
     static void doGetNextFrameStatic(FramedSource* source);
+    bool fWaitingForKey = false;
+    bool fPosterNext = false;
 };
 
 #endif

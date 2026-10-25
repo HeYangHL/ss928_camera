@@ -36,6 +36,28 @@ public:
     int8_t *data = nullptr;
 };
 
+class Idr_Cache{
+public:
+    Idr_Cache(){
+        pthVar.Init_Mutex_Cond(mutex, r_dummy, w_dummy);
+        data = nullptr;
+        len = 0;
+        pts = 0;
+    }
+    ~Idr_Cache(){ Clear(); }
+    int Store(const int8_t *buf, int n, uint64_t p);
+    uint8_t *GetCopy(int *n, uint64_t *p);
+    void Clear(void);
+private:
+    PTH_LOCK pthVar;
+    pthread_mutex_t mutex;
+    pthread_cond_t r_dummy;
+    pthread_cond_t w_dummy;
+    uint8_t *data;
+    int len;
+    uint64_t pts;
+};
+
 class STREAM_QUEUE{
 public:
     STREAM_QUEUE(){

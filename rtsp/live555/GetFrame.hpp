@@ -13,12 +13,15 @@
 class GetFrame{
     public:
     // void Init_Socket(void){};
-    using FrameCallback = std::function<int(uint8_t**, int&)>;
+    using FrameCallback = std::function<int(uint8_t**, int&, bool&)>;
     using ReleaseCallback = std::function<void(uint8_t*)>;
+    using ResetCallback = std::function<void()>;
     int Set_Video_Frame(FrameCallback cb);
     int Set_Release_Frame(ReleaseCallback cb);
-    int Get_Video_Frame(uint8_t **pack, int &size);
+    int Set_Reset_Callback(ResetCallback cb);
+    int Get_Video_Frame(uint8_t **pack, int &size, bool &key);
     void Release_Video_Frame(uint8_t *pack);
+    void Reset(void);
 
     private:
     int fd = 0;
@@ -26,6 +29,7 @@ class GetFrame{
     FileStream fstream;
     FrameCallback frame_cb;
     ReleaseCallback release_cb;
+    ResetCallback reset_cb;
 };
 
 extern GetFrame g_rtsp_get_frame;

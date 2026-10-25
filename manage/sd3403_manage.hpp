@@ -24,7 +24,7 @@ public:
     ~SD3403_Manage();
     hi_s32 manager_rtsp_stream_init(void);
     void release_rtsp_stream(uint8_t *pack);
-    hi_s32 get_rtsp_stream(uint8_t **pack, int &size);
+    hi_s32 get_rtsp_stream(uint8_t **pack, int &size, bool &key);
     hi_s32 start_multi_vi_vpss(hi_s32 dev_num, hi_s32 grp_num);
     hi_s32 enable_sys(hi_void);
     hi_s32 enable_vi_vpss(hi_void);
@@ -70,6 +70,11 @@ private:
     hi_u32 grp_num = 2;
     List Sensor0_Fifo;
     List Sensor1_Fifo;
+    Idr_Cache Sensor0_IdrCache;
+    uint8_t *replay_idr = nullptr;
+    int replay_idr_len = 0;
+    uint64_t replay_idr_pts = 0;
+    bool replay_pending = false;
 
     bool _enc_run = false;
     bool model_run = false;

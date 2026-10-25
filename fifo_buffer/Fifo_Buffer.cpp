@@ -1,4 +1,52 @@
 #include "Fifo_Buffer.hpp"
+#include <string.h>
+
+int Idr_Cache::Store(const int8_t *buf, int n, uint64_t p){
+    pthVar.Lock_Mutex(mutex);
+    if (data != nullptr){
+        delete[] data;
+        data = nullptr;
+    }
+    if (buf == nullptr || n <= 0){
+        len = 0;
+        pts = 0;
+        pthVar.Unlock_Mutex(mutex);
+        return 0;
+    }
+    data = new uint8_t[n];
+    memcpy(data, buf, n);
+    len = n;
+    pts = p;
+    pthVar.Unlock_Mutex(mutex);
+    return len;
+}
+
+uint8_t *Idr_Cache::GetCopy(int *n, uint64_t *p){
+    pthVar.Lock_Mutex(mutex);
+    if (data == nullptr || len <= 0){
+        pthVar.Unlock_Mutex(mutex);
+        if (n) *n = 0;
+        if (p) *p = 0;
+        return nullptr;
+    }
+    uint8_t *d = new uint8_t[len];
+    memcpy(d, data, len);
+    if (n) *n = len;
+    if (p) *p = pts;
+    pthVar.Unlock_Mutex(mutex);
+    return d;
+}
+
+void Idr_Cache::Clear(void){
+    pthVar.Lock_Mutex(mutex);
+    if (data != nullptr){
+        delete[] data;
+        data = nullptr;
+    }
+    len = 0;
+    pts = 0;
+    pthVar.Unlock_Mutex(mutex);
+}
 
 int List::Clear_Fifo(void)
 {

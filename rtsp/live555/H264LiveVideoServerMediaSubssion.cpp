@@ -1,9 +1,8 @@
 #include "H264LiveVideoServerMediaSubssion.hh"
-#include "H264FramedLiveSource.hh"
 #include "H264VideoStreamFramer.hh"
 #include "H264VideoRTPSink.hh"
-#include "ByteStreamFileSource.hh"
 
+int g_h264_active_clients = 0;
 
 H264LiveVideoServerMediaSubssion *H264LiveVideoServerMediaSubssion::createNew(UsageEnvironment &env, Boolean reuseFirstSource) {
   return new H264LiveVideoServerMediaSubssion(env, reuseFirstSource);
@@ -25,9 +24,34 @@ FramedSource *H264LiveVideoServerMediaSubssion::createNewStreamSource(
   if (liveSource == NULL) {
     return NULL;
   }
+  fLiveSource = liveSource;
 
   // Create a framer for the Video Elementary Stream:
   return H264VideoStreamFramer::createNew(envir(), liveSource);
+}
+
+void H264LiveVideoServerMediaSubssion::startStream(unsigned clientSessionId, void* streamToken,
+    TaskFunc* rtcpRRHandler,
+    void* rtcpRRHandlerClientData,
+    unsigned short& rtpSeqNum,
+    unsigned& rtpTimestamp,
+    ServerRequestAlternativeByteHandler* serverRequestAlternativeByteHandler,
+    void* serverRequestAlternativeByteHandlerClientData) {
+  bool firstClient = (g_h264_active_clients == 0);
+  g_h264_active_clients++;
+  if (fLiveSource != NULL && firstClient) {
+    fLiveSource->requestResync();
+  }
+  OnDemandServerMediaSubsession::startStream(clientSessionId, streamToken,
+      rtcpRRHandler, rtcpRRHandlerClientData, rtpSeqNum, rtpTimestamp,
+      serverRequestAlternativeByteHandler, serverRequestAlternativeByteHandlerClientData);
+}
+
+void H264LiveVideoServerMediaSubssion::deleteStream(unsigned clientSessionId, void*& streamToken) {
+  if (g_h264_active_clients > 0) {
+    g_h264_active_clients--;
+  }
+  OnDemandServerMediaSubsession::deleteStream(clientSessionId, streamToken);
 }
 
 RTPSink *H264LiveVideoServerMediaSubssion::createNewRTPSink(Groupsock *rtpGroupsock,

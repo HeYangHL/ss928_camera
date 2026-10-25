@@ -163,12 +163,6 @@ int SD3403_VENC::getSensor_Frame(char *data, uint64_t *pts, int ms, bool &key, i
                     stStream.pack->data_type.h265_type == HI_VENC_H265_NALU_I_SLICE ||
                     stStream.pack->data_type.h265_type == HI_VENC_H265_NALU_VPS)
                 {
-                    printf("===>get chn : %d stream, len : %d, type : %d\n", venc_chn, size, stStream.pack->data_type.h265_type);
-                    char buffer[1024] = {0};
-                    sprintf(buffer, "venc_%d.h265", venc_chn);
-                    FILE *fp = fopen(buffer, "wb");
-                    fwrite(data, size, 1, fp);
-                    fclose(fp);
                     key = true;
                 }
                 else

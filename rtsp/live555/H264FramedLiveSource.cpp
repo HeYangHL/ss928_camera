@@ -39,6 +39,13 @@ void H264FramedLiveSource::doGetNextFrameStatic(FramedSource* source)
     source->doGetNextFrame();
 }
 
+void H264FramedLiveSource::requestResync()
+{
+    g_rtsp_get_frame.Reset();
+    fWaitingForKey = true;
+    fPosterNext = true;
+}
+
 void H264FramedLiveSource::doReadFromFile()
 {
     struct timeval oldPresentationTime = fPresentationTime;
@@ -46,7 +53,8 @@ void H264FramedLiveSource::doReadFromFile()
 
     uint8_t* frame = NULL;
     int size = 0;
-    int iFrameSize = g_rtsp_get_frame.Get_Video_Frame(&frame, size);
+    bool key = false;
+    int iFrameSize = g_rtsp_get_frame.Get_Video_Frame(&frame, size, key);
 
     if (iFrameSize < 0) {
         handleClosure();
@@ -59,6 +67,17 @@ void H264FramedLiveSource::doReadFromFile()
         nextTask() = envir().taskScheduler().scheduleDelayedTask(1000,
             (TaskFunc*)doGetNextFrameStatic, this);
         return;
+    }
+
+    if (fPosterNext) {
+        fPosterNext = false;
+    } else if (fWaitingForKey && !key) {
+        g_rtsp_get_frame.Release_Video_Frame(frame);
+        nextTask() = envir().taskScheduler().scheduleDelayedTask(1000,
+            (TaskFunc*)doGetNextFrameStatic, this);
+        return;
+    } else if (key) {
+        fWaitingForKey = false;
     }
 
     // 整个编码包一次交付，从不截断（BANK_SIZE 1.5MB 装得下 VENC 整包）

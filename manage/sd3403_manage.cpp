@@ -2,6 +2,9 @@
 
 #define RTSP_LISTEN_PORT 8554
 
+extern int g_h265_active_clients;
+extern int g_h264_active_clients;
+
 int SD3403_Manage::g_sig_flag = 0;
 sem_t SD3403_Manage::mutex;
 
@@ -374,6 +377,9 @@ hi_void SD3403_Manage::sensor_venc_stream(int chn)
         }
         if (chn == 0)
         {
+            if (keyFrame) {
+                Sensor0_IdrCache.Store((int8_t *)outFrame, enc_len, o_pts);
+            }
             ret = Sensor0_Fifo.write_enc((int8_t *)outFrame, enc_len, o_pts, keyFrame, 10);
             if (ret <= 0)
             {
@@ -631,8 +637,8 @@ int SD3403_Manage::Live555_RTSPInit(void)
 hi_s32 SD3403_Manage::manager_rtsp_stream_init(void)
 {
     g_rtsp_get_frame.Set_Video_Frame(
-        [this](uint8_t **pack, int &size) -> int {
-            return this->get_rtsp_stream(pack, size);
+        [this](uint8_t **pack, int &size, bool &key) -> int {
+            return this->get_rtsp_stream(pack, size, key);
         }
     );
     g_rtsp_get_frame.Set_Release_Frame(
@@ -640,17 +646,39 @@ hi_s32 SD3403_Manage::manager_rtsp_stream_init(void)
             this->release_rtsp_stream(pack);
         }
     );
+    g_rtsp_get_frame.Set_Reset_Callback([this]() {
+        if (g_h265_active_clients <= 1 && g_h264_active_clients <= 1) {
+            Sensor0_Fifo.clean_enc_fifo();
+        }
+        if (replay_idr != nullptr) {
+            delete[] replay_idr;
+            replay_idr = nullptr;
+        }
+        replay_idr = Sensor0_IdrCache.GetCopy(&replay_idr_len, &replay_idr_pts);
+        replay_pending = (replay_idr != nullptr);
+        sd3403_venc.sensor0_keyFrame = true;
+        sd3403_venc.request_key_frame(0);
+        sd3403_venc.sensor0_keyFrame = false;
+    });
     return 0;
 }
 
-int SD3403_Manage::get_rtsp_stream(uint8_t **pack, int &size)
+int SD3403_Manage::get_rtsp_stream(uint8_t **pack, int &size, bool &key)
 {
+    if (replay_pending) {
+        replay_pending = false;
+        *pack = replay_idr;
+        size = replay_idr_len;
+        key = true;
+        replay_idr = nullptr;
+        return 0;
+    }
     int ret = 0;
     uint64_t ts_pts = 0;
-    bool key = false;
+    key = false;
 
     ret = Sensor0_Fifo.read_enc((int8_t **)pack, &size, &ts_pts, &key, 100);
-    if(ret < 0)
+    if (ret < 0)
     {
         printf("[DEBUG]===>get video stream error!\n");
         return -1;
@@ -658,6 +686,8 @@ int SD3403_Manage::get_rtsp_stream(uint8_t **pack, int &size)
 
     return 0;
 }
+
+
 
 void SD3403_Manage::release_rtsp_stream(uint8_t *pack)
 {

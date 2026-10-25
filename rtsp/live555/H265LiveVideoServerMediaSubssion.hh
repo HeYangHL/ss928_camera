@@ -3,6 +3,8 @@
 #include "OnDemandServerMediaSubsession.hh"
 
 
+#include "H265FramedLiveSource.hh"
+
 class H265LiveVideoServerMediaSubssion : public OnDemandServerMediaSubsession {
 
 public:
@@ -15,6 +17,16 @@ protected: // we're a virtual base class
 protected: // redefined virtual functions
 	virtual FramedSource* createNewStreamSource(unsigned clientSessionId,unsigned& estBitrate);
 	virtual RTPSink *createNewRTPSink(Groupsock *rtpGroupsock, unsigned char rtpPayloadTypeIfDynamic, FramedSource *inputSource);
+	virtual void startStream(unsigned clientSessionId, void* streamToken,
+		TaskFunc* rtcpRRHandler,
+		void* rtcpRRHandlerClientData,
+		unsigned short& rtpSeqNum,
+		unsigned& rtpTimestamp,
+		ServerRequestAlternativeByteHandler* serverRequestAlternativeByteHandler,
+		void* serverRequestAlternativeByteHandlerClientData);
+	virtual void deleteStream(unsigned clientSessionId, void*& streamToken);
+private:
+	H265FramedLiveSource *fLiveSource = nullptr;
 };
 
 
