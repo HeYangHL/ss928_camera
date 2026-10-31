@@ -2,7 +2,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
-GetFrame g_rtsp_get_frame;
+
 
 int GetFrame::Get_Video_Frame(uint8_t **pack, int &size, bool &key) {
     if (pack == nullptr)

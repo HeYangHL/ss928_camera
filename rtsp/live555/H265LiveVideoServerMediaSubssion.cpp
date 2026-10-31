@@ -1,28 +1,28 @@
 #include "H265LiveVideoServerMediaSubssion.hh"
-#include "H265FramedLiveSource.hh"
 #include "H265VideoStreamFramer.hh"
 #include "H265VideoRTPSink.hh"
 
-
-H265LiveVideoServerMediaSubssion *H265LiveVideoServerMediaSubssion::createNew(UsageEnvironment &env, Boolean reuseFirstSource) {
-  return new H265LiveVideoServerMediaSubssion(env, reuseFirstSource);
+H265LiveVideoServerMediaSubssion *H265LiveVideoServerMediaSubssion::createNew(UsageEnvironment &env, Boolean reuseFirstSource, GetFrame *pGetFrame) {
+  return new H265LiveVideoServerMediaSubssion(env, reuseFirstSource, pGetFrame);
 }
 
 
 H265LiveVideoServerMediaSubssion::H265LiveVideoServerMediaSubssion(
-    UsageEnvironment &env, Boolean reuseFirstSource)
-    : OnDemandServerMediaSubsession(env, reuseFirstSource) {}
+    UsageEnvironment &env, Boolean reuseFirstSource, GetFrame *pGetFrame)
+    : OnDemandServerMediaSubsession(env, reuseFirstSource)
+{
+  m_pGetFrame = pGetFrame;
+  m_pActiveClients = NULL;
+}
 
 H265LiveVideoServerMediaSubssion::~H265LiveVideoServerMediaSubssion() {}
-
-int g_h265_active_clients = 0;
 
 FramedSource *H265LiveVideoServerMediaSubssion::createNewStreamSource(
     unsigned clientSessionId, unsigned &estBitrate) {
   // 4K H.265 VBR peak ~= 10240 kbps (venc_h265_vbr_param_init, PIC_3840X2160)
   estBitrate = 10000; // kbps, estimate
 
-  H265FramedLiveSource *liveSource = H265FramedLiveSource::createNew(envir());
+  H265FramedLiveSource *liveSource = H265FramedLiveSource::createNew(envir(), m_pGetFrame);
   if (liveSource == NULL) {
     return NULL;
   }
@@ -39,8 +39,15 @@ void H265LiveVideoServerMediaSubssion::startStream(unsigned clientSessionId, voi
     unsigned& rtpTimestamp,
     ServerRequestAlternativeByteHandler* serverRequestAlternativeByteHandler,
     void* serverRequestAlternativeByteHandlerClientData) {
-  bool firstClient = (g_h265_active_clients == 0);
-  g_h265_active_clients++;
+  bool firstClient = true;
+  if (m_pGetFrame != NULL) {
+    int cnt = m_pGetFrame->m_activeCount.load();
+    firstClient = (cnt == 0);
+    m_pGetFrame->m_activeCount.fetch_add(1);
+  } else if (m_pActiveClients != NULL) {
+    firstClient = (*m_pActiveClients == 0);
+    (*m_pActiveClients)++;
+  }
   if (fLiveSource != NULL && firstClient) {
     fLiveSource->requestResync();
   }
@@ -50,8 +57,12 @@ void H265LiveVideoServerMediaSubssion::startStream(unsigned clientSessionId, voi
 }
 
 void H265LiveVideoServerMediaSubssion::deleteStream(unsigned clientSessionId, void*& streamToken) {
-  if (g_h265_active_clients > 0) {
-    g_h265_active_clients--;
+  if (m_pGetFrame != NULL) {
+    if (m_pGetFrame->m_activeCount.load() > 0) {
+      m_pGetFrame->m_activeCount.fetch_sub(1);
+    }
+  } else if (m_pActiveClients != NULL && *m_pActiveClients > 0) {
+    (*m_pActiveClients)--;
   }
   OnDemandServerMediaSubsession::deleteStream(clientSessionId, streamToken);
 }

@@ -2,16 +2,18 @@
 #include "H264VideoStreamFramer.hh"
 #include "H264VideoRTPSink.hh"
 
-int g_h264_active_clients = 0;
-
-H264LiveVideoServerMediaSubssion *H264LiveVideoServerMediaSubssion::createNew(UsageEnvironment &env, Boolean reuseFirstSource) {
-  return new H264LiveVideoServerMediaSubssion(env, reuseFirstSource);
+H264LiveVideoServerMediaSubssion *H264LiveVideoServerMediaSubssion::createNew(UsageEnvironment &env, Boolean reuseFirstSource, GetFrame *pGetFrame) {
+  return new H264LiveVideoServerMediaSubssion(env, reuseFirstSource, pGetFrame);
 }
 
 
 H264LiveVideoServerMediaSubssion::H264LiveVideoServerMediaSubssion(
-    UsageEnvironment &env, Boolean reuseFirstSource)
-    : OnDemandServerMediaSubsession(env, reuseFirstSource) {}
+    UsageEnvironment &env, Boolean reuseFirstSource, GetFrame *pGetFrame)
+    : OnDemandServerMediaSubsession(env, reuseFirstSource)
+{
+  m_pGetFrame = pGetFrame;
+  m_pActiveClients = NULL;
+}
 
 H264LiveVideoServerMediaSubssion::~H264LiveVideoServerMediaSubssion() {}
 
@@ -20,7 +22,7 @@ FramedSource *H264LiveVideoServerMediaSubssion::createNewStreamSource(
   /* Remain to do : assign estBitrate */
   estBitrate = 1000; // kbps, estimate
 
-  H264FramedLiveSource *liveSource = H264FramedLiveSource::createNew(envir());
+  H264FramedLiveSource *liveSource = H264FramedLiveSource::createNew(envir(), m_pGetFrame);
   if (liveSource == NULL) {
     return NULL;
   }
@@ -37,8 +39,15 @@ void H264LiveVideoServerMediaSubssion::startStream(unsigned clientSessionId, voi
     unsigned& rtpTimestamp,
     ServerRequestAlternativeByteHandler* serverRequestAlternativeByteHandler,
     void* serverRequestAlternativeByteHandlerClientData) {
-  bool firstClient = (g_h264_active_clients == 0);
-  g_h264_active_clients++;
+  bool firstClient = true;
+  if (m_pGetFrame != NULL) {
+    int cnt = m_pGetFrame->m_activeCount.load();
+    firstClient = (cnt == 0);
+    m_pGetFrame->m_activeCount.fetch_add(1);
+  } else if (m_pActiveClients != NULL) {
+    firstClient = (*m_pActiveClients == 0);
+    (*m_pActiveClients)++;
+  }
   if (fLiveSource != NULL && firstClient) {
     fLiveSource->requestResync();
   }
@@ -48,8 +57,12 @@ void H264LiveVideoServerMediaSubssion::startStream(unsigned clientSessionId, voi
 }
 
 void H264LiveVideoServerMediaSubssion::deleteStream(unsigned clientSessionId, void*& streamToken) {
-  if (g_h264_active_clients > 0) {
-    g_h264_active_clients--;
+  if (m_pGetFrame != NULL) {
+    if (m_pGetFrame->m_activeCount.load() > 0) {
+      m_pGetFrame->m_activeCount.fetch_sub(1);
+    }
+  } else if (m_pActiveClients != NULL && *m_pActiveClients > 0) {
+    (*m_pActiveClients)--;
   }
   OnDemandServerMediaSubsession::deleteStream(clientSessionId, streamToken);
 }

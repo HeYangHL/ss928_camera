@@ -112,7 +112,6 @@ hi_void SD3403_Manage::start_rtsp(hi_void)
     rtsp_s.add_media_source("sensor1_media", sensor1_rv, this, NULL, NULL, 30, 4800, "h265", "aac");
 #else
     Live555_RTSPInit();
-    manager_rtsp_stream_init();
 #endif
 }
 
@@ -390,6 +389,9 @@ hi_void SD3403_Manage::sensor_venc_stream(int chn)
         }
         else if (chn == 1)
         {
+            if (keyFrame) {
+                Sensor1_IdrCache.Store((int8_t *)outFrame, enc_len, o_pts);
+            }
             ret = Sensor1_Fifo.write_enc((int8_t *)outFrame, enc_len, o_pts, keyFrame, 10);
             if (ret <= 0)
             {
@@ -608,22 +610,21 @@ int SD3403_Manage::Live555_RTSPInit(void)
     if (urlPrefix != NULL) {
         printf("=================URL===================\n");
         printf("%s%s\n", urlPrefix, "sensor0_media");
+        printf("%s%s\n", urlPrefix, "sensor1_media");
         printf("=================URL===================\n");
     }
 
-    ServerMediaSession *mediaSession = NULL;
-    if (rtsp.createServerMediaSession(mediaSession, "sensor0_media", NULL, NULL) != 0 || mediaSession == NULL) {
-        printf("createServerMediaSession fail ...\n");
-        return -1;
-    }
+    manager_rtsp_stream_init();
+    manager_rtsp_stream_init1();
 
-    ServerMediaSubsession *subSession =
-        H265LiveVideoServerMediaSubssion::createNew(*(rtsp.GetUsageEnvironmentObj()), true);
-    if (subSession == NULL || rtsp.addSubsession(mediaSession, subSession) != 0) {
-        printf("addSubsession fail ...\n");
+    if (rtsp.addVideoStream("sensor0_media", &m_gf0, true, true) != 0) {
+        printf("addVideoStream sensor0_media fail ...\n");
         return -1;
     }
-    rtsp.addServerMediaSession(mediaSession);
+    if (rtsp.addVideoStream("sensor1_media", &m_gf1, true, true) != 0) {
+        printf("addVideoStream sensor1_media fail ...\n");
+        return -1;
+    }
 
     if (rtsp.Start() != 0) {
         printf("rtsp Start fail ...\n");
@@ -636,18 +637,18 @@ int SD3403_Manage::Live555_RTSPInit(void)
 
 hi_s32 SD3403_Manage::manager_rtsp_stream_init(void)
 {
-    g_rtsp_get_frame.Set_Video_Frame(
+    m_gf0.Set_Video_Frame(
         [this](uint8_t **pack, int &size, bool &key) -> int {
             return this->get_rtsp_stream(pack, size, key);
         }
     );
-    g_rtsp_get_frame.Set_Release_Frame(
+    m_gf0.Set_Release_Frame(
         [this](uint8_t *pack) {
             this->release_rtsp_stream(pack);
         }
     );
-    g_rtsp_get_frame.Set_Reset_Callback([this]() {
-        if (g_h265_active_clients <= 1 && g_h264_active_clients <= 1) {
+    m_gf0.Set_Reset_Callback([this]() {
+        if (m_gf0.GetActiveCount() <= 1) {
             Sensor0_Fifo.clean_enc_fifo();
         }
         if (replay_idr != nullptr) {
@@ -661,6 +662,34 @@ hi_s32 SD3403_Manage::manager_rtsp_stream_init(void)
         sd3403_venc.sensor0_keyFrame = false;
     });
     return 0;
+}
+
+void SD3403_Manage::manager_rtsp_stream_init1(void)
+{
+    m_gf1.Set_Video_Frame(
+        [this](uint8_t **pack, int &size, bool &key) -> int {
+            return this->get_rtsp_stream1(pack, size, key);
+        }
+    );
+    m_gf1.Set_Release_Frame(
+        [this](uint8_t *pack) {
+            this->release_rtsp_stream(pack);
+        }
+    );
+    m_gf1.Set_Reset_Callback([this]() {
+        if (m_gf1.GetActiveCount() <= 1) {
+            Sensor1_Fifo.clean_enc_fifo();
+        }
+        if (replay_idr1 != nullptr) {
+            delete[] replay_idr1;
+            replay_idr1 = nullptr;
+        }
+        replay_idr1 = Sensor1_IdrCache.GetCopy(&replay_idr1_len, &replay_idr1_pts);
+        replay_pending1 = (replay_idr1 != nullptr);
+        sd3403_venc.sensor1_keyFrame = true;
+        sd3403_venc.request_key_frame(1);
+        sd3403_venc.sensor1_keyFrame = false;
+    });
 }
 
 int SD3403_Manage::get_rtsp_stream(uint8_t **pack, int &size, bool &key)
@@ -678,6 +707,30 @@ int SD3403_Manage::get_rtsp_stream(uint8_t **pack, int &size, bool &key)
     key = false;
 
     ret = Sensor0_Fifo.read_enc((int8_t **)pack, &size, &ts_pts, &key, 100);
+    if (ret < 0)
+    {
+        printf("[DEBUG]===>get video stream error!\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+int SD3403_Manage::get_rtsp_stream1(uint8_t **pack, int &size, bool &key)
+{
+    if (replay_pending1) {
+        replay_pending1 = false;
+        *pack = replay_idr1;
+        size = replay_idr1_len;
+        key = true;
+        replay_idr1 = nullptr;
+        return 0;
+    }
+    int ret = 0;
+    uint64_t ts_pts = 0;
+    key = false;
+
+    ret = Sensor1_Fifo.read_enc((int8_t **)pack, &size, &ts_pts, &key, 100);
     if (ret < 0)
     {
         printf("[DEBUG]===>get video stream error!\n");

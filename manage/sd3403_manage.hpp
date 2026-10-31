@@ -15,7 +15,6 @@
 #ifdef RTSP_LIVE555_ON
 #include "GetFrame.hpp"
 #include "Live555RTSPServer.hpp"
-#include "H265LiveVideoServerMediaSubssion.hh"
 #endif
 
 class SD3403_Manage{
@@ -23,8 +22,10 @@ public:
     SD3403_Manage();
     ~SD3403_Manage();
     hi_s32 manager_rtsp_stream_init(void);
+    void manager_rtsp_stream_init1(void);
     void release_rtsp_stream(uint8_t *pack);
     hi_s32 get_rtsp_stream(uint8_t **pack, int &size, bool &key);
+    hi_s32 get_rtsp_stream1(uint8_t **pack, int &size, bool &key);
     hi_s32 start_multi_vi_vpss(hi_s32 dev_num, hi_s32 grp_num);
     hi_s32 enable_sys(hi_void);
     hi_s32 enable_vi_vpss(hi_void);
@@ -71,10 +72,17 @@ private:
     List Sensor0_Fifo;
     List Sensor1_Fifo;
     Idr_Cache Sensor0_IdrCache;
+    Idr_Cache Sensor1_IdrCache;
+    GetFrame m_gf0;
+    GetFrame m_gf1;
     uint8_t *replay_idr = nullptr;
     int replay_idr_len = 0;
     uint64_t replay_idr_pts = 0;
     bool replay_pending = false;
+    uint8_t *replay_idr1 = nullptr;
+    int replay_idr1_len = 0;
+    uint64_t replay_idr1_pts = 0;
+    bool replay_pending1 = false;
 
     bool _enc_run = false;
     bool model_run = false;

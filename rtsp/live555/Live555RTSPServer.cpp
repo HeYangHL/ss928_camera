@@ -149,6 +149,52 @@ UsageEnvironment* Live555RTSPServer::GetUsageEnvironmentObj()
 	return m_pUsageEnvironment;
 }
 
+#include "H265LiveVideoServerMediaSubssion.hh"
+#include "H264LiveVideoServerMediaSubssion.hh"
+
+int Live555RTSPServer::addStream(const StreamConfig &cfg)
+{
+	if (m_pUsageEnvironment == NULL || m_pRTSPServer == NULL || cfg.getFrame == NULL || cfg.name.empty()) {
+		return -1;
+	}
+
+	ServerMediaSession *sms = NULL;
+	if (createServerMediaSession(sms, cfg.name.c_str(), NULL, NULL) != 0 || sms == NULL) {
+		return -2;
+	}
+
+	ServerMediaSubsession *subSession = NULL;
+	if (cfg.isH265) {
+		subSession = H265LiveVideoServerMediaSubssion::createNew(*m_pUsageEnvironment, cfg.reuseFirstSource, cfg.getFrame);
+	} else {
+		subSession = H264LiveVideoServerMediaSubssion::createNew(*m_pUsageEnvironment, cfg.reuseFirstSource, cfg.getFrame);
+	}
+
+	if (subSession == NULL || addSubsession(sms, subSession) != 0) {
+		Medium::close(sms);
+		return -3;
+	}
+
+	if (addServerMediaSession(sms) != 0) {
+		Medium::close(sms);
+		return -4;
+	}
+
+	return 0;
+}
+
+int Live555RTSPServer::addVideoStream(const char* name, GetFrame* gf, bool h265, bool reuseFirstSource)
+{
+	StreamConfig cfg;
+	if (name != NULL) {
+		cfg.name = name;
+	}
+	cfg.getFrame = gf;
+	cfg.isH265 = h265;
+	cfg.reuseFirstSource = reuseFirstSource;
+	return addStream(cfg);
+}
+
 int Live555RTSPServer::Start()
 {
 	pthread_mutex_lock(&m_ThreadMutex);

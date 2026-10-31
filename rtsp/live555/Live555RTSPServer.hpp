@@ -6,14 +6,23 @@
 #include <unistd.h>
 #include <sys/prctl.h>
 #include <string.h>
+#include <string>
 
 #include "liveMedia.hh"
 #include "BasicUsageEnvironment.hh"
 #include "GroupsockHelper.hh"
+#include "GetFrame.hpp"
 
 
 class Live555RTSPServer {
 public:
+	struct StreamConfig {
+		std::string name;
+		GetFrame* getFrame = NULL;
+		bool isH265 = true;
+		bool reuseFirstSource = true;
+	};
+
 	Live555RTSPServer();
 	~Live555RTSPServer();
 	void Stop(void);
@@ -27,6 +36,8 @@ public:
 	int Start();
 	int addServerMediaSession(ServerMediaSession* serverMediaSession);
 	UsageEnvironment* GetUsageEnvironmentObj();
+	int addStream(const StreamConfig &cfg);
+	int addVideoStream(const char* name, GetFrame* gf, bool h265 = true, bool reuseFirstSource = true);
 
 	static void *SingleStepThread(void* arg);
 
