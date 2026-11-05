@@ -62,7 +62,8 @@ void H264FramedLiveSource::doReadFromFile()
     uint8_t* frame = NULL;
     int size = 0;
     bool key = false;
-    int iFrameSize = m_pGetFrame->Get_Video_Frame(&frame, size, key);
+    unsigned long cid = (unsigned long)this;
+    int iFrameSize = m_pGetFrame->Get_Video_Frame(&frame, size, key, cid);
 
     if (iFrameSize < 0) {
         handleClosure();

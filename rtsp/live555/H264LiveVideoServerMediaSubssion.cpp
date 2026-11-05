@@ -48,8 +48,16 @@ void H264LiveVideoServerMediaSubssion::startStream(unsigned clientSessionId, voi
     firstClient = (*m_pActiveClients == 0);
     (*m_pActiveClients)++;
   }
-  if (fLiveSource != NULL && firstClient) {
-    fLiveSource->requestResync();
+  if (fLiveSource != NULL) {
+    if (m_pGetFrame != NULL) {
+      if (firstClient) {
+        m_pGetFrame->ClearRingHistory();
+      }
+      m_pGetFrame->AddClient(clientSessionId);
+    }
+    if (fLiveSource != NULL) {
+      fLiveSource->requestResync();
+    }
   }
   OnDemandServerMediaSubsession::startStream(clientSessionId, streamToken,
       rtcpRRHandler, rtcpRRHandlerClientData, rtpSeqNum, rtpTimestamp,
@@ -61,6 +69,7 @@ void H264LiveVideoServerMediaSubssion::deleteStream(unsigned clientSessionId, vo
     if (m_pGetFrame->m_activeCount.load() > 0) {
       m_pGetFrame->m_activeCount.fetch_sub(1);
     }
+    m_pGetFrame->RemoveClient(clientSessionId);
   } else if (m_pActiveClients != NULL && *m_pActiveClients > 0) {
     (*m_pActiveClients)--;
   }

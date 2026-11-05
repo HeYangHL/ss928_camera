@@ -11,6 +11,7 @@
 #include <functional>
 
 #include <atomic>
+#include "MediaRingBuffer.hpp"
 
 class GetFrame{
     public:
@@ -24,9 +25,16 @@ class GetFrame{
     int Set_Release_Frame(ReleaseCallback cb);
     int Set_Reset_Callback(ResetCallback cb);
     int Get_Video_Frame(uint8_t **pack, int &size, bool &key);
+    int Get_Video_Frame(uint8_t **pack, int &size, bool &key, unsigned long clientSessionId);
     void Release_Video_Frame(uint8_t *pack);
     void Reset(void);
+    void AddClient(unsigned int clientSessionId);
+    void RemoveClient(unsigned int clientSessionId);
+    void ClearRingHistory();
+    void ClearRingBuffer();
+    int PushFrame(uint8_t *data, int size, bool key, uint64_t pts = 0);
     int GetActiveCount() const { return m_activeCount.load(); }
+    CircularQueue<MediaFrame> *GetRingQueue() { return &m_ringQueue; }
 
     private:
     friend class H265LiveVideoServerMediaSubssion;
@@ -38,6 +46,7 @@ class GetFrame{
     ReleaseCallback release_cb;
     ResetCallback reset_cb;
     std::atomic<int> m_activeCount{0};
+    CircularQueue<MediaFrame> m_ringQueue;
 };
 
 #endif

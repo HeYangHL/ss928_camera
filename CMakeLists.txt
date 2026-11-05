@@ -29,6 +29,7 @@ include_directories(
     "${OBJ_SOURCE}/fifo_buffer"
     "${OBJ_SOURCE}/svp_npu/camera_model_det"
     "${OBJ_SOURCE}/svp_npu/camera_track_obj"
+    "${OBJ_SOURCE}/queue"
     "${OBJ_SOURCE}/3rdLibrary/rtsp/include"
     "${OBJ_SOURCE}/3rdLibrary/rtsp/live555/include/BasicUsageEnvironment"
     "${OBJ_SOURCE}/3rdLibrary/rtsp/live555/include/groupsock"
