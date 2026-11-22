@@ -7,10 +7,10 @@
 class H264LiveVideoServerMediaSubssion : public OnDemandServerMediaSubsession {
 
 public:
-	static H264LiveVideoServerMediaSubssion* createNew(UsageEnvironment& env, Boolean reuseFirstSource=false, GetFrame *pGetFrame = nullptr);
+	static H264LiveVideoServerMediaSubssion* createNew(UsageEnvironment& env, Boolean reuseFirstSource=false, VideoGetFrame *pGetFrame = nullptr);
 
 protected: // we're a virtual base class
-	H264LiveVideoServerMediaSubssion(UsageEnvironment& env, Boolean reuseFirstSource, GetFrame *pGetFrame = nullptr);
+	H264LiveVideoServerMediaSubssion(UsageEnvironment& env, Boolean reuseFirstSource, VideoGetFrame *pGetFrame = nullptr);
 	~H264LiveVideoServerMediaSubssion();
 
 protected: // redefined virtual functions
@@ -26,7 +26,7 @@ protected: // redefined virtual functions
 	virtual void deleteStream(unsigned clientSessionId, void*& streamToken);
 private:
 	H264FramedLiveSource *fLiveSource = nullptr;
-	GetFrame *m_pGetFrame = nullptr;
+	VideoGetFrame *m_pGetFrame = nullptr;
 	int *m_pActiveClients = nullptr;
 public:
 	char fFileName[100];

@@ -2,13 +2,13 @@
 #include "H265VideoStreamFramer.hh"
 #include "H265VideoRTPSink.hh"
 
-H265LiveVideoServerMediaSubssion *H265LiveVideoServerMediaSubssion::createNew(UsageEnvironment &env, Boolean reuseFirstSource, GetFrame *pGetFrame) {
+H265LiveVideoServerMediaSubssion *H265LiveVideoServerMediaSubssion::createNew(UsageEnvironment &env, Boolean reuseFirstSource, VideoGetFrame *pGetFrame) {
   return new H265LiveVideoServerMediaSubssion(env, reuseFirstSource, pGetFrame);
 }
 
 
 H265LiveVideoServerMediaSubssion::H265LiveVideoServerMediaSubssion(
-    UsageEnvironment &env, Boolean reuseFirstSource, GetFrame *pGetFrame)
+    UsageEnvironment &env, Boolean reuseFirstSource, VideoGetFrame *pGetFrame)
     : OnDemandServerMediaSubsession(env, reuseFirstSource)
 {
   m_pGetFrame = pGetFrame;

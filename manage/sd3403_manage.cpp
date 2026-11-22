@@ -1,4 +1,5 @@
 #include "sd3403_manage.hpp"
+#include <new>
 
 #define RTSP_LISTEN_PORT 8554
 
@@ -21,6 +22,7 @@ int SD3403_Manage::Run_Fifo_Thread(void)
     {
         Venc_Thread = new std::thread(&SD3403_Manage::sensor_venc_stream, this, venc_chn[i]);
     }
+    Aenc_Thread = new std::thread(&SD3403_Manage::audio_aenc_stream, this);
     return 0;
 }
 #ifndef RTSP_LIVE555_ON
@@ -355,11 +357,11 @@ hi_void SD3403_Manage::sensor_venc_stream(int chn)
 
     sprintf(thread_name, "thread_chn_%d", chn);
     pthread_setname_np(pthread_self(), thread_name);
-    _enc_run = true;
-    while (_enc_run)
+    _venc_run = true;
+    while (_venc_run)
     {
-        char *outFrame = nullptr;
-        outFrame = new char[1024 * 1024];
+        uint8_t *outFrame = nullptr;
+        outFrame = new uint8_t[1024 * 1024];
         ret = request_key_frame(chn);
         if(ret < 0)
         {
@@ -377,24 +379,74 @@ hi_void SD3403_Manage::sensor_venc_stream(int chn)
         if (chn == 0)
         {
             if (keyFrame) {
-                Sensor0_IdrCache.Store((int8_t *)outFrame, enc_len, o_pts);
+                Sensor0_IdrCache.Store((const int8_t *)outFrame, enc_len, o_pts);
             }
             // 由环形队列代替FIFO
-            m_gf0.PushFrame((uint8_t*)outFrame, enc_len, keyFrame, o_pts);
+            m_sensor0_vrb.PushVideoFrame(outFrame, enc_len, keyFrame, o_pts);
             outFrame = nullptr;
             continue;
         }
         else if (chn == 1)
         {
             if (keyFrame) {
-                Sensor1_IdrCache.Store((int8_t *)outFrame, enc_len, o_pts);
+                Sensor1_IdrCache.Store((const int8_t *)outFrame, enc_len, o_pts);
             }
-            m_gf1.PushFrame((uint8_t*)outFrame, enc_len, keyFrame, o_pts);
+            m_sensor1_vrb.PushVideoFrame(outFrame, enc_len, keyFrame, o_pts);
             outFrame = nullptr;
             continue;
         }
     }
     return;
+}
+
+hi_void SD3403_Manage::audio_aenc_stream(void)
+{
+    int enc_len = 0;
+    uint64_t o_pts = 0;
+    int seq = 0;
+    char thread_name[32] = {0};
+    char *outFrame = nullptr;
+
+    sprintf(thread_name, "thread_aenc");
+    pthread_setname_np(pthread_self(), thread_name);
+    _aenc_run = true;
+
+    outFrame = new char[MAX_AAC_MAINBUF_SIZE];
+    if (outFrame == nullptr)
+    {
+        _aenc_run = false;
+        return;
+    }
+
+    while(_aenc_run)
+    {
+        enc_len = sd3403_aenc.Sd3403_Get_Aenc_Stream(
+                      outFrame, MAX_AAC_MAINBUF_SIZE, &o_pts, &seq, 100);
+        if (enc_len <= 0)
+            continue;
+
+        // 音频帧需要拷贝后入队，outFrame 会被下一帧复用
+        uint8_t *audioFrame = new (std::nothrow) uint8_t[enc_len];
+        if (audioFrame == nullptr)
+            continue;
+
+        // ADTS: protection_absent=1 时头长 7 字节，否则 9 字节
+        unsigned adtsHeaderLen = 7;
+        uint8_t *adts = reinterpret_cast<uint8_t*>(outFrame);
+        if (enc_len >= 2 && adts[0] == 0xFF && (adts[1] & 0xF0) == 0xF0)
+        {
+            adtsHeaderLen = (adts[1] & 0x01) ? 7 : 9;
+        }
+
+        memcpy(audioFrame, outFrame, enc_len);
+        if (m_arb.PushAudioFrame(audioFrame, enc_len, o_pts, 48000, 1,
+                                 adtsHeaderLen, seq) != 0)
+        {
+            delete[] audioFrame;
+        }
+    }
+
+    delete[] outFrame;
 }
 
 hi_s32 SD3403_Manage::enable_venc(hi_void)
@@ -514,22 +566,15 @@ hi_void SD3403_Manage::signal_handle_thread(void)
     while(1)
     {
         sem_wait(&mutex);
-        printf("=====>start handle thread!\n");
         clean_rtsp();
-        printf("1\n");
         stop_all_thread();
-        printf("2\n");
         // svp.sd3403_rfcn_svp_npu_model_deinit();
+        disable_ai_aenc();
         disable_rgn();
-        printf("3\n");
         disable_venc();
-        printf("4\n");
         disable_vpss();
-        printf("5\n");
         disable_vi();
-        printf("6\n");
         disable_sys();
-        printf("=====>end handle thread!\n");
         if (g_sig_flag)
             _exit(EXIT_FAILURE);
 
@@ -570,9 +615,13 @@ hi_void SD3403_Manage::stop_all_thread(void)
         Yuvto_Model->join();
 
     //release venc thread
-    _enc_run = false;
+    _venc_run = false;
     if(Venc_Thread != nullptr && Venc_Thread->joinable())
         Venc_Thread->join();
+
+    _aenc_run = false;
+    if(Aenc_Thread != nullptr && Aenc_Thread->joinable())
+        Aenc_Thread->join();
 #ifdef RTSP_LIVE555_ON
     rtsp.Stop();
     rtsp.ThreadJoin();
@@ -607,14 +656,14 @@ int SD3403_Manage::Live555_RTSPInit(void)
         printf("=================URL===================\n");
     }
 
-    manager_rtsp_stream_init();
-    manager_rtsp_stream_init1();
+    manager_rtsp_sensor0_stream_init();
+    manager_rtsp_sensor1_stream_init();
 
-    if (rtsp.addVideoStream("sensor0_media", &m_gf0, true, false) != 0) {
+    if (rtsp.addVideoStream("sensor0_media", &m_sensor0_vrb, true, false, &m_arb, 48000, 1) != 0) {
         printf("addVideoStream sensor0_media fail ...\n");
         return -1;
     }
-    if (rtsp.addVideoStream("sensor1_media", &m_gf1, true, false) != 0) {
+    if (rtsp.addVideoStream("sensor1_media", &m_sensor1_vrb, true, false, &m_arb, 48000, 1) != 0) {
         printf("addVideoStream sensor1_media fail ...\n");
         return -1;
     }
@@ -628,25 +677,25 @@ int SD3403_Manage::Live555_RTSPInit(void)
 }
 
 
-hi_s32 SD3403_Manage::manager_rtsp_stream_init(void)
+hi_s32 SD3403_Manage::manager_rtsp_sensor0_stream_init(void)
 {
-    m_gf0.Set_Video_Frame(
+    m_sensor0_vrb.Set_Video_Frame(
         [this](uint8_t **pack, int &size, bool &key) -> int {
-            return this->get_rtsp_stream(pack, size, key);
+            return this->get_rtsp_sensor0_stream(pack, size, key);
         }
     );
-    m_gf0.Set_Release_Frame(
+    m_sensor0_vrb.Set_Release_Frame(
         [this](uint8_t *pack) {
             this->release_rtsp_stream(pack);
         }
     );
-    m_gf0.Set_Reset_Callback([this]() {
-        if (replay_idr != nullptr) {
-            delete[] replay_idr;
-            replay_idr = nullptr;
+    m_sensor0_vrb.Set_Reset_Callback([this]() {
+        if (replay_sensor0_idr != nullptr) {
+            delete[] replay_sensor0_idr;
+            replay_sensor0_idr = nullptr;
         }
-        replay_idr = Sensor0_IdrCache.GetCopy(&replay_idr_len, &replay_idr_pts);
-        replay_pending = (replay_idr != nullptr);
+        replay_sensor0_idr = Sensor0_IdrCache.GetCopy(&replay_sensor0_idr_len, &replay_sensor0_idr_pts);
+        replay_sensor0_pending = (replay_sensor0_idr != nullptr);
         sd3403_venc.sensor0_keyFrame = true;
         sd3403_venc.request_key_frame(0);
         sd3403_venc.sensor0_keyFrame = false;
@@ -654,39 +703,39 @@ hi_s32 SD3403_Manage::manager_rtsp_stream_init(void)
     return 0;
 }
 
-void SD3403_Manage::manager_rtsp_stream_init1(void)
+void SD3403_Manage::manager_rtsp_sensor1_stream_init(void)
 {
-    m_gf1.Set_Video_Frame(
+    m_sensor1_vrb.Set_Video_Frame(
         [this](uint8_t **pack, int &size, bool &key) -> int {
-            return this->get_rtsp_stream1(pack, size, key);
+            return this->get_rtsp_sensor1_stream(pack, size, key);
         }
     );
-    m_gf1.Set_Release_Frame(
+    m_sensor1_vrb.Set_Release_Frame(
         [this](uint8_t *pack) {
             this->release_rtsp_stream(pack);
         }
     );
-    m_gf1.Set_Reset_Callback([this]() {
-        if (replay_idr1 != nullptr) {
-            delete[] replay_idr1;
-            replay_idr1 = nullptr;
+    m_sensor1_vrb.Set_Reset_Callback([this]() {
+        if (replay_sensor1_idr != nullptr) {
+            delete[] replay_sensor1_idr;
+            replay_sensor1_idr = nullptr;
         }
-        replay_idr1 = Sensor1_IdrCache.GetCopy(&replay_idr1_len, &replay_idr1_pts);
-        replay_pending1 = (replay_idr1 != nullptr);
+        replay_sensor1_idr = Sensor1_IdrCache.GetCopy(&replay_sensor1_idr_len, &replay_sensor1_idr_pts);
+        replay_sensor1_pending = (replay_sensor1_idr != nullptr);
         sd3403_venc.sensor1_keyFrame = true;
         sd3403_venc.request_key_frame(1);
         sd3403_venc.sensor1_keyFrame = false;
     });
 }
 
-int SD3403_Manage::get_rtsp_stream(uint8_t **pack, int &size, bool &key)
+int SD3403_Manage::get_rtsp_sensor0_stream(uint8_t **pack, int &size, bool &key)
 {
-    if (replay_pending) {
-        replay_pending = false;
-        *pack = replay_idr;
-        size = replay_idr_len;
+    if (replay_sensor0_pending) {
+        replay_sensor0_pending = false;
+        *pack = replay_sensor0_idr;
+        size = replay_sensor0_idr_len;
         key = true;
-        replay_idr = nullptr;
+        replay_sensor0_idr = nullptr;
         return 0;
     }
     key = false;
@@ -696,14 +745,14 @@ int SD3403_Manage::get_rtsp_stream(uint8_t **pack, int &size, bool &key)
     return -1;
 }
 
-int SD3403_Manage::get_rtsp_stream1(uint8_t **pack, int &size, bool &key)
+int SD3403_Manage::get_rtsp_sensor1_stream(uint8_t **pack, int &size, bool &key)
 {
-    if (replay_pending1) {
-        replay_pending1 = false;
-        *pack = replay_idr1;
-        size = replay_idr1_len;
+    if (replay_sensor1_pending) {
+        replay_sensor1_pending = false;
+        *pack = replay_sensor1_idr;
+        size = replay_sensor1_idr_len;
         key = true;
-        replay_idr1 = nullptr;
+        replay_sensor1_idr = nullptr;
         return 0;
     }
     key = false;
@@ -719,9 +768,77 @@ void SD3403_Manage::release_rtsp_stream(uint8_t *pack)
 {
     if (pack != nullptr)
     {
-        // 因为底层是 new char[] 分配的，所以这里必须用 delete[]
-        delete[] (char*)pack;
-        pack = nullptr;
+        // GetFrame 深拷贝与 IDR 缓存均使用 new uint8_t[] 分配
+        delete[] pack;
     }
 }
 
+hi_s32 SD3403_Manage::set_audio_input_volume(hi_s32 volume_db)
+{
+    return sd3403_ai.Sd343_Ai_Set_Input_Volume(volume_db);
+}
+
+hi_s32 SD3403_Manage::get_audio_input_volume(hi_s32 *volume_db)
+{
+    return sd3403_ai.Sd343_Ai_Get_Input_Volume(volume_db);
+}
+
+hi_s32 SD3403_Manage::set_audio_vqe(hi_bool enable)
+{
+    return sd3403_ai.Sd343_Ai_Set_Vqe(enable);
+}
+
+hi_s32 SD3403_Manage::set_audio_vqe_agc(hi_s32 target_level, hi_s32 max_gain)
+{
+    return sd3403_ai.Sd343_Ai_Set_Vqe_Agc(target_level, max_gain);
+}
+
+hi_s32 SD3403_Manage::enable_ai_aenc(hi_void)
+{
+    hi_s32 ret = 0;
+
+    ret = sd3403_ai.Sd343_Ai_Init();
+    if(ret)
+    {
+        ss_print("[%s %d] ai init failed\n", __func__, __LINE__);
+        return -1;
+    }
+
+    ret = sd3403_aenc.Sd343_Aenc_Aac_Init();
+    if(ret)
+    {
+        ss_print("[%s %d] aac register failed\n", __func__, __LINE__);
+        sd3403_ai.Sd343_Ai_Deinit();
+        return -1;
+    }
+
+    ret = sd3403_aenc.Sd343_Aenc_Init();
+    if(ret)
+    {
+        ss_print("[%s %d] aenc init failed\n", __func__, __LINE__);
+        sd3403_aenc.Sd343_Aenc_Aac_DeInit();
+        sd3403_ai.Sd343_Ai_Deinit();
+        return -1;
+    }
+
+    return 0;
+}
+
+hi_s32 SD3403_Manage::disable_ai_aenc(hi_void)
+{
+    hi_s32 ret = 0;
+
+    ret = sd3403_aenc.Sd343_Aenc_Deinit();
+    if(ret)
+        ss_print("[%s %d] aenc deinit failed\n", __func__, __LINE__);
+
+    ret = sd3403_ai.Sd343_Ai_Deinit();
+    if(ret)
+        ss_print("[%s %d] ai deinit failed\n", __func__, __LINE__);
+
+    ret = sd3403_aenc.Sd343_Aenc_Aac_DeInit();
+    if(ret)
+        ss_print("[%s %d] aac deinit failed\n", __func__, __LINE__);
+
+    return 0;
+}

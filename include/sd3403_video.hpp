@@ -1,16 +1,6 @@
-#ifndef _DEF_H_
-#define _DEF_H_
+#ifndef __SD3403_VIDEO_HPP__
+#define __SD3403_VIDEO_HPP__
 
-#include <stdio.h>
-#include <sys/stat.h>
-#include <sys/prctl.h>
-#include <unistd.h>
-#include <sys/ioctl.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <signal.h>
-#include "opencv2/opencv.hpp"
-#include "opencv2/imgproc.hpp"
 #include "hi_common.h"
 #include "securec.h"
 #include "hi_common_video.h"
@@ -38,33 +28,12 @@
 #include "hi_common_ae.h"
 #include "hi_mpi_ae.h"
 #include "ot_common_ae.h"
-#include "hi_sns_ctrl.h"
 #include "hi_common_region.h"
 #include "hi_mpi_region.h"
-#include <iostream>
-#include <thread>
-#include "Fifo_Buffer.hpp"
+#include "opencv2/opencv.hpp"
+#include "opencv2/imgproc.hpp"
 
 
-// #ifdef __cplusplus
-// #if __cplusplus
-// extern "C"{
-// #endif
-// #endif /* __cplusplus */
-
-#define ss_print(fmt...)                             \
-    do                                               \
-    {                                                \
-        printf("[%s]-%d: ", __FUNCTION__, __LINE__); \
-        printf(fmt);                                 \
-    } while (0)
-
-#define ss_pause()                                                          \
-    do                                                                      \
-    {                                                                       \
-        printf("---------------press enter key to exit!---------------\n"); \
-        getchar();                                                          \
-    } while (0)
 
 #define check_return(express, name)                                             \
     do                                                                          \
@@ -266,7 +235,6 @@ typedef struct
     hi_s32 chn_total;
 } sd3403_venc_stream_proc_info;
 
-//svp struct
 typedef struct center_point{
     float x;
     float y;
@@ -344,7 +312,6 @@ typedef struct coor_point
     } while (0)
 #define svp_trace_info(msg, ...) svp_printf("Info", msg, ##__VA_ARGS__)
 
-/* exps is true, goto */
 #define svp_check_exps_goto(exps, label, level, msg, ...) \
     do                                                    \
     {                                                     \
@@ -403,10 +370,6 @@ constexpr uint8_t SCALE_SIZE = 3;
 constexpr uint8_t CLASS_NUM = 80;
 constexpr uint8_t OUT_PARM_NUM = 85;
 
-// typedef struct Resnet{
-
-// }objinfo;
-
 #define SVP_NPU_MAX_MEM_SIZE 0xFFFFFFFF
 #define SVP_ACL_ERROR_RT_REPORT_TIMEOUT 507012
 #define YUV420_SIZE 614400
@@ -415,10 +378,4 @@ constexpr uint8_t OUT_PARM_NUM = 85;
 
 #define PROC_OLD
 
-
-// #ifdef __cplusplus
-// #if __cplusplus
-// }
-// #endif
-// #endif /* __cplusplus */
 #endif

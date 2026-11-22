@@ -2,6 +2,7 @@
 #define _SD3403_SYS_HPP_
 
 #include "def.h"
+#include "sd3403_video.hpp"
 #include "sd3403_common.hpp"
 
 class SD3403_SYS{

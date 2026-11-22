@@ -6,18 +6,20 @@
 ////////// H265FramedLiveSource //////////
 #define MAX_VIDEO_FRAME_SIZE 1000000
 
-H265FramedLiveSource* H265FramedLiveSource::createNew(UsageEnvironment& env, GetFrame *pGetFrame)
+H265FramedLiveSource* H265FramedLiveSource::createNew(UsageEnvironment& env, VideoGetFrame *pGetFrame)
 {
     return new H265FramedLiveSource(env, pGetFrame);
 }
 
-H265FramedLiveSource::H265FramedLiveSource(UsageEnvironment& env, GetFrame *pGetFrame) : FramedSource(env)
+H265FramedLiveSource::H265FramedLiveSource(UsageEnvironment& env, VideoGetFrame *pGetFrame) : FramedSource(env)
 {
     m_pGetFrame = pGetFrame;
 }
 
 H265FramedLiveSource::~H265FramedLiveSource()
 {
+    if (m_pGetFrame != NULL)
+        m_pGetFrame->RemoveClient((unsigned int)(unsigned long)this);
 }
 
 unsigned int H265FramedLiveSource::maxFrameSize() const

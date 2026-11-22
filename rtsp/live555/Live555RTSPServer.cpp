@@ -151,6 +151,7 @@ UsageEnvironment* Live555RTSPServer::GetUsageEnvironmentObj()
 
 #include "H265LiveVideoServerMediaSubssion.hh"
 #include "H264LiveVideoServerMediaSubssion.hh"
+#include "AACLiveAudioServerMediaSubssion.hh"
 
 int Live555RTSPServer::addStream(const StreamConfig &cfg)
 {
@@ -175,6 +176,21 @@ int Live555RTSPServer::addStream(const StreamConfig &cfg)
 		return -3;
 	}
 
+	if (cfg.audioFrame != NULL) {
+		ServerMediaSubsession *audioSubSession = AACLiveAudioServerMediaSubssion::createNew(
+			*m_pUsageEnvironment, cfg.reuseFirstSource, cfg.audioFrame,
+			cfg.audioSampleRate, cfg.audioChannels);
+		if (audioSubSession == NULL) {
+			Medium::close(sms);
+			return -5;
+		}
+		if (addSubsession(sms, audioSubSession) != 0) {
+			Medium::close(audioSubSession);
+			Medium::close(sms);
+			return -5;
+		}
+	}
+
 	if (addServerMediaSession(sms) != 0) {
 		Medium::close(sms);
 		return -4;
@@ -183,15 +199,19 @@ int Live555RTSPServer::addStream(const StreamConfig &cfg)
 	return 0;
 }
 
-int Live555RTSPServer::addVideoStream(const char* name, GetFrame* gf, bool h265, bool reuseFirstSource)
+int Live555RTSPServer::addVideoStream(const char* name, VideoGetFrame* gf, bool h265, bool reuseFirstSource,
+                                      AudioGetFrame* audioFrame, unsigned audioSampleRate, unsigned audioChannels)
 {
 	StreamConfig cfg;
 	if (name != NULL) {
 		cfg.name = name;
 	}
 	cfg.getFrame = gf;
+	cfg.audioFrame = audioFrame;
 	cfg.isH265 = h265;
 	cfg.reuseFirstSource = reuseFirstSource;
+	cfg.audioSampleRate = audioSampleRate;
+	cfg.audioChannels = audioChannels;
 	return addStream(cfg);
 }
 

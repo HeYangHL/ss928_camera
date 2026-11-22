@@ -25,7 +25,11 @@ include_directories(
     "${OBJ_SOURCE}/rgn"
     "${OBJ_SOURCE}/vpss"
     "${OBJ_SOURCE}/manage"
+    "${OBJ_SOURCE}/ai"
+    "${OBJ_SOURCE}/aenc"
+    "${OBJ_SOURCE}/aac_codec"
     "${OBJ_SOURCE}/common"
+    "${OBJ_SOURCE}/include"
     "${OBJ_SOURCE}/fifo_buffer"
     "${OBJ_SOURCE}/svp_npu/camera_model_det"
     "${OBJ_SOURCE}/svp_npu/camera_track_obj"
@@ -55,6 +59,8 @@ file(GLOB SRC
     "${OBJ_SOURCE}/vi/sd3403_vi.cpp"
     "${OBJ_SOURCE}/vpss/sd3403_vpss.cpp"
     "${OBJ_SOURCE}/rgn/sd3403_rgn.cpp"
+    "${OBJ_SOURCE}/ai/sd3403_ai.cpp"
+    "${OBJ_SOURCE}/aenc/sd3403_aenc.cpp"
     "${OBJ_SOURCE}/source/sd3403_main.cpp"
     "${OBJ_SOURCE}/manage/sd3403_manage.cpp"
     "${OBJ_SOURCE}/common/sd3403_common.cpp"
@@ -63,11 +69,15 @@ file(GLOB SRC
     "${OBJ_SOURCE}/svp_npu/camera_model_det/svp_npu.cpp"
     "${OBJ_SOURCE}/svp_npu/camera_track_obj/*.cpp"
     "${OBJ_SOURCE}/rtsp/live555/GetFrame.cpp"
+    "${OBJ_SOURCE}/rtsp/live555/AACFramedLiveSource.cpp"
+    "${OBJ_SOURCE}/rtsp/live555/AACLiveAudioServerMediaSubssion.cpp"
     "${OBJ_SOURCE}/rtsp/live555/H264FramedLiveSource.cpp"
     "${OBJ_SOURCE}/rtsp/live555/H264LiveVideoServerMediaSubssion.cpp"
     "${OBJ_SOURCE}/rtsp/live555/H265FramedLiveSource.cpp"
     "${OBJ_SOURCE}/rtsp/live555/H265LiveVideoServerMediaSubssion.cpp"
     "${OBJ_SOURCE}/rtsp/live555/Live555RTSPServer.cpp"
+    "${OBJ_SOURCE}/aac_codec/audio_aac_adp.c"
+    "${OBJ_SOURCE}/aac_codec/audio_dl_adp.c"
     # "${OBJ_SOURCE}/svp_npu/camera_track_obj/Hungarian.cpp"
     # "${OBJ_SOURCE}/svp_npu/camera_track_obj/KalmanTracker.cpp"
     # "${OBJ_SOURCE}/svp_npu/camera_track_obj/pch.cpp"
@@ -77,14 +87,16 @@ add_subdirectory(examples/model)
 add_subdirectory(examples/decode)
 
 add_executable(sd3403_obj ${SRC})
-target_compile_definitions(sd3403_obj PRIVATE RTSP_LIVE555_ON)
+target_compile_definitions(sd3403_obj PRIVATE RTSP_LIVE555_ON OT_AAC_HAVE_SBR_LIB OT_AAC_USE_STATIC_MODULE_REGISTER OT_VQE_USE_STATIC_MODULE_REGISTER)
 set(live555_lib liveMedia groupsock BasicUsageEnvironment UsageEnvironment)
 set(openssl_lib ssl crypto)
 set(sd3403_lib mpi isp ot_isp securec _hiawb _hiae sns_imx485 sns_imx347_slave sns_os05a10_2l_slave sns_os08b10 sns_os04a10 sns_os08a20 VoiceEngine 
     upvqe _hiacs dnvqe _hildci _hidrc _hidehaze _hiir_auto _hibnr _hiextend_stats _hicalcflicker _hicrb svp_acl protobuf-c)
+set(sd3403_aac_codec aac_comm aac_enc aac_dec aac_sbr_enc aac_sbr_dec dl)
+set(sd3403_vqe_lib vqe_record vqe_hpf vqe_agc vqe_anr vqe_eq vqe_common)
 file(GLOB OPENCV_LIBS "${OBJ_SOURCE}/3rdLibrary/opencv/lib/*.so")
 # set(OPENCV_LIB opencv_core opencv_imgproc opencv_imgcodecs opencv_video jpeg png16 tiff z jbig)
-target_link_libraries(sd3403_obj pthread ${sd3403_lib} rtsp ${OPENCV_LIBS} ${live555_lib} ${openssl_lib})
+target_link_libraries(sd3403_obj pthread ${sd3403_lib} rtsp ${OPENCV_LIBS} ${live555_lib} ${openssl_lib} ${sd3403_aac_codec} ${sd3403_vqe_lib})
 
 # if(DEFINED EXAMPLE)
 #     if(${EXAMPLE} STREQUAL "all")

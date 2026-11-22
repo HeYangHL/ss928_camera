@@ -2,6 +2,7 @@
 #define _SD3403_VENC_HPP_
 
 #include "def.h"
+#include "sd3403_video.hpp"
 
 class SD3403_VENC{
 public:

@@ -2,6 +2,7 @@
 #define _SD3403_RGN_HPP_
 
 #include "def.h"
+#include "sd3403_video.hpp"
 #include "pch.h"
 #include <unordered_map>
 #include <unordered_set>

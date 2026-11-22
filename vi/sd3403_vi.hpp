@@ -2,6 +2,7 @@
 #define _SD3403_VI_HPP_
 
 #include "def.h"
+#include "sd3403_video.hpp"
 #include "sd3403_common.hpp"
 
 extern ot_isp_sns_obj g_sns_os04a10_obj;

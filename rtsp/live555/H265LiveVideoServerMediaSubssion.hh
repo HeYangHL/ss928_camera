@@ -8,10 +8,10 @@
 class H265LiveVideoServerMediaSubssion : public OnDemandServerMediaSubsession {
 
 public:
-	static H265LiveVideoServerMediaSubssion* createNew(UsageEnvironment& env, Boolean reuseFirstSource=false, GetFrame *pGetFrame = nullptr);
+	static H265LiveVideoServerMediaSubssion* createNew(UsageEnvironment& env, Boolean reuseFirstSource=false, VideoGetFrame *pGetFrame = nullptr);
 
 protected: // we're a virtual base class
-	H265LiveVideoServerMediaSubssion(UsageEnvironment& env, Boolean reuseFirstSource, GetFrame *pGetFrame = nullptr);
+	H265LiveVideoServerMediaSubssion(UsageEnvironment& env, Boolean reuseFirstSource, VideoGetFrame *pGetFrame = nullptr);
 	~H265LiveVideoServerMediaSubssion();
 
 protected: // redefined virtual functions
@@ -27,7 +27,7 @@ protected: // redefined virtual functions
 	virtual void deleteStream(unsigned clientSessionId, void*& streamToken);
 private:
 	H265FramedLiveSource *fLiveSource = nullptr;
-	GetFrame *m_pGetFrame = nullptr;
+	VideoGetFrame *m_pGetFrame = nullptr;
 	int *m_pActiveClients = nullptr;
 };
 

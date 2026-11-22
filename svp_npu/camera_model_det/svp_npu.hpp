@@ -6,6 +6,7 @@
 #include <fstream>
 #include <cmath> 
 #include "def.h"
+#include "sd3403_video.hpp"
 #include "svp_acl_rt.h"
 #include "svp_acl.h"
 #include "svp_acl_ext.h"

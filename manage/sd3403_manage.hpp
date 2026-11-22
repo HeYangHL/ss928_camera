@@ -8,6 +8,8 @@
 #include "sd3403_vpss.hpp"
 #include "sd3403_sys.hpp"
 #include "sd3403_rgn.hpp"
+#include "sd3403_ai.hpp"
+#include "sd3403_aenc.hpp"
 #include "Fifo_Buffer.hpp"
 #include "rtspserver.hpp"
 #include "svp_npu.hpp"
@@ -21,15 +23,21 @@ class SD3403_Manage{
 public:
     SD3403_Manage();
     ~SD3403_Manage();
-    hi_s32 manager_rtsp_stream_init(void);
-    void manager_rtsp_stream_init1(void);
+    hi_s32 manager_rtsp_sensor0_stream_init(void);
+    void manager_rtsp_sensor1_stream_init(void);
     void release_rtsp_stream(uint8_t *pack);
-    hi_s32 get_rtsp_stream(uint8_t **pack, int &size, bool &key);
-    hi_s32 get_rtsp_stream1(uint8_t **pack, int &size, bool &key);
+    hi_s32 get_rtsp_sensor0_stream(uint8_t **pack, int &size, bool &key);
+    hi_s32 get_rtsp_sensor1_stream(uint8_t **pack, int &size, bool &key);
     hi_s32 start_multi_vi_vpss(hi_s32 dev_num, hi_s32 grp_num);
     hi_s32 enable_sys(hi_void);
     hi_s32 enable_vi_vpss(hi_void);
     hi_s32 enable_venc(hi_void);
+    hi_s32 enable_ai_aenc(hi_void);
+    hi_s32 disable_ai_aenc(hi_void);
+    hi_s32 set_audio_input_volume(hi_s32 volume_db);
+    hi_s32 get_audio_input_volume(hi_s32 *volume_db);
+    hi_s32 set_audio_vqe(hi_bool enable);
+    hi_s32 set_audio_vqe_agc(hi_s32 target_level, hi_s32 max_gain);
     hi_s32 disable_venc(hi_void);
     hi_s32 disable_vpss(hi_void);
     hi_s32 disable_vi(hi_void);
@@ -39,6 +47,7 @@ public:
     hi_void register_signal(hi_void);
     hi_void signal_handle_thread(void);
     hi_void sensor_venc_stream(int chn);
+    hi_void audio_aenc_stream(void);
     hi_void start_rtsp(hi_void);
     int Run_Fifo_Thread(void);
     int Live555_RTSPInit(void);
@@ -66,6 +75,8 @@ private:
     SD3403_VPSS sd3403_vpss;
     SD3403_VENC sd3403_venc;
     SD3403_RGN sd3403_rgn;
+    SD3403_AENC sd3403_aenc;
+    SD3403_AI sd3403_ai;
     SD3403_Common sdCom;
     hi_venc_chn venc_chn[4] = {0, 1, 2, 3};
     hi_u32 grp_num = 2;
@@ -73,22 +84,25 @@ private:
     List Sensor1_Fifo;
     Idr_Cache Sensor0_IdrCache;
     Idr_Cache Sensor1_IdrCache;
-    GetFrame m_gf0;
-    GetFrame m_gf1;
-    uint8_t *replay_idr = nullptr;
-    int replay_idr_len = 0;
-    uint64_t replay_idr_pts = 0;
-    bool replay_pending = false;
-    uint8_t *replay_idr1 = nullptr;
-    int replay_idr1_len = 0;
-    uint64_t replay_idr1_pts = 0;
-    bool replay_pending1 = false;
+    VideoGetFrame m_sensor0_vrb;
+    VideoGetFrame m_sensor1_vrb;
+    AudioGetFrame m_arb{64};
+    uint8_t *replay_sensor0_idr = nullptr;
+    int replay_sensor0_idr_len = 0;
+    uint64_t replay_sensor0_idr_pts = 0;
+    bool replay_sensor0_pending = false;
+    uint8_t *replay_sensor1_idr = nullptr;
+    int replay_sensor1_idr_len = 0;
+    uint64_t replay_sensor1_idr_pts = 0;
+    bool replay_sensor1_pending = false;
 
-    bool _enc_run = false;
+    bool _venc_run = false;
+    bool _aenc_run = false;
     bool model_run = false;
     bool signal_run = false;
     std::thread *Send_Thread = nullptr;
     std::thread *Venc_Thread = nullptr;
+    std::thread *Aenc_Thread = nullptr;
     std::thread *Yuvto_Model = nullptr;
     std::thread *Sig_Thread = nullptr;
     static int g_sig_flag;

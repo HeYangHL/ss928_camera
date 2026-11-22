@@ -18,9 +18,12 @@ class Live555RTSPServer {
 public:
 	struct StreamConfig {
 		std::string name;
-		GetFrame* getFrame = NULL;
+		VideoGetFrame* getFrame = NULL;
+		AudioGetFrame* audioFrame = NULL;
 		bool isH265 = true;
 		bool reuseFirstSource = true;
+		unsigned audioSampleRate = 48000;
+		unsigned audioChannels = 1;
 	};
 
 	Live555RTSPServer();
@@ -37,7 +40,9 @@ public:
 	int addServerMediaSession(ServerMediaSession* serverMediaSession);
 	UsageEnvironment* GetUsageEnvironmentObj();
 	int addStream(const StreamConfig &cfg);
-	int addVideoStream(const char* name, GetFrame* gf, bool h265 = true, bool reuseFirstSource = true);
+	int addVideoStream(const char* name, VideoGetFrame* gf, bool h265 = true, bool reuseFirstSource = true,
+	                   AudioGetFrame* audioFrame = NULL, unsigned audioSampleRate = 48000,
+	                   unsigned audioChannels = 1);
 
 	static void *SingleStepThread(void* arg);
 

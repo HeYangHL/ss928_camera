@@ -21,15 +21,21 @@ int main(int argc, const char **argv)
         std::cout << "enable venc error !" <<std::endl;
         goto start_venc_failed;
     }
+    ret = manage.enable_ai_aenc();
+    if (ret != HI_SUCCESS) {
+        std::cout << "enable audio error !" <<std::endl;
+        goto start_venc_failed;
+    }
 
     manage.Run_Fifo_Thread();
     manage.start_rtsp();
     manage.register_signal();
 
     manage.get_char();
-    // printf("===========================================1=====================================\n");
-start_venc_failed:
+
     manage.stop_all_thread();
+    manage.disable_ai_aenc();
+start_venc_failed:
     manage.disable_venc();
     manage.disable_rgn();
     manage.disable_vpss();
